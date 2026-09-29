@@ -8,15 +8,8 @@ from typing import Dict, Any, List
 from scipy.sparse import hstack
 from src.detector import ScriptLanguageDetector
 from src.database import log_prediction
-# Define tactics list
-TACTICS = [
-    "urgency",
-    "authority_impersonation",
-    "false_reward",
-    "loss_aversion",
-    "credential_phishing",
-    "suspicious_link"
-]
+from src.taxonomy import TACTICS
+
 class ScamShieldInference:
     def __init__(
         self, 
