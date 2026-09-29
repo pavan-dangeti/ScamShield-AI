@@ -95,7 +95,7 @@ def _batch_forward(model, batch, device):
     return model(**inputs)
 
 
-def train(model_name: str, config: dict) -> None:
+def train(model_name: str, config: dict, train_split: str = "train", output_suffix: str = "") -> None:
     from transformers import AutoTokenizer, get_linear_schedule_with_warmup
 
     device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
@@ -107,7 +107,7 @@ def train(model_name: str, config: dict) -> None:
     lr = config.get("lr", 2e-5)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    train_rows = load_split("train")
+    train_rows = load_split(train_split)
     val_rows = load_split("val")
     train_dataset = ScamDataset(train_rows, tokenizer, max_length)
     val_dataset = ScamDataset(val_rows, tokenizer, max_length)
@@ -150,12 +150,16 @@ def train(model_name: str, config: dict) -> None:
 
     if best_state is not None:
         model.load_state_dict(best_state)
-    save_dir = os.path.join("models", model_name.replace("/", "_"))
+    save_dir = os.path.join("models", model_name.replace("/", "_") + output_suffix)
     os.makedirs(save_dir, exist_ok=True)
     torch.save(model.state_dict(), os.path.join(save_dir, "model.pt"))
     tokenizer.save_pretrained(save_dir)
     with open(os.path.join(save_dir, "config.json"), "w", encoding="utf-8") as handle:
-        json.dump({**config, "model_name": model_name, "max_length": max_length, "val_macro_f1": best_val_f1}, handle, indent=2)
+        json.dump(
+            {**config, "model_name": model_name, "max_length": max_length,
+             "train_split": train_split, "val_macro_f1": best_val_f1},
+            handle, indent=2,
+        )
     print(f"saved to {save_dir} (val macro F1 {best_val_f1:.4f})")
 
 
@@ -201,12 +205,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", default="google/muril-base")
     parser.add_argument("--config", default=None, help="path to a JSON training config")
+    parser.add_argument("--train-split", default="train", help="which processed split to train on")
+    parser.add_argument("--output-suffix", default="", help="appended to the model directory, e.g. -aug")
     args = parser.parse_args()
     config = {}
     if args.config:
         with open(args.config, encoding="utf-8") as handle:
             config = json.load(handle)
-    train(args.model, config)
+    train(args.model, config, args.train_split, args.output_suffix)
 
 
 if __name__ == "__main__":
