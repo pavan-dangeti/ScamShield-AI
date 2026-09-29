@@ -12,7 +12,7 @@ the command that regenerates it.
 | Encoder | `xlm-roberta-base` | fine-tuned, same heads | `python -m src.models.transformer --model xlm-roberta-base --config configs/xlmr.json` |
 | Prompted LLM | Qwen2.5-7B-Instruct-4bit, 0-shot | rules + JSON output, greedy | `python -m src.models.llm_prompted --shots 0 --limit 400` |
 | Prompted LLM | Qwen2.5-7B-Instruct-4bit, 3-shot | 3 class-balanced examples from train | `python -m src.models.llm_prompted --shots 3 --limit 400` |
-| LoRA | SmolLM2-135M-Instruct, LoRA r=16 | 1 epoch, answer-only loss | `python -m src.models.lora --model HuggingFaceTB/SmolLM2-135M-Instruct --config configs/lora_smollm135m.json` |
+| LoRA | SmolLM2-135M-Instruct, LoRA r=16 | 1 epoch, answer-only loss | `python -m src.models.lora --model HuggingFaceTB/SmolLM2-135M-Instruct --config configs/lora_smollm135m.json --device cpu` |
 
 MuRIL is the encoder named in the project brief, but every MuRIL repository on
 Hugging Face is gated and returns 401 without an access token, so the Indic arm
@@ -40,25 +40,36 @@ overstates real-world performance. The honest conclusion is: *the encoders learn
 this corpus better than the baseline*, and *the corpus must be replaced by the
 frozen test set before any of these numbers describe the product.*
 
-## 3. The prompted LLM over-flags
+## 3. Prompted vs trained LLM: prompting over-flags, fine-tuning does not
 
-`python -m scripts.evaluate_models --models llm-0shot llm-3shot --subsample 400`
+`python -m scripts.evaluate_models --models llm-0shot llm-3shot lora-SmolLM2-135M-Instruct --subsample 400`
 
 Seeded stratified subsample, 354 rows, so the generative arms are compared on
 exactly the same messages as each other:
 
-| Model | Precision | Recall | F1 | Tactic macro-F1 |
-|---|---|---|---|---|
-| llm-0shot | 0.5329 | 0.9889 | 0.6926 | 0.0919 |
-| llm-3shot | 0.5696 | 1.0000 | 0.7258 | 0.4030 |
+| Model | Precision | Recall | F1 | Tactic macro-F1 | Scam calls |
+|---|---|---|---|---|---|
+| llm-0shot | 0.5329 | 0.9889 | 0.6926 | 0.0919 | 334 / 354 |
+| llm-3shot | 0.5696 | 1.0000 | 0.7258 | 0.4030 | 316 / 354 |
+| lora-SmolLM2-135M | 0.9597 | 0.7944 | 0.8693 | 0.1822 | - |
 
-The prompted 7B model labels **334 of 354** messages as scam zero-shot and
-**316 of 354** with three examples. It has learned the *topic* of fraud detection
-rather than the *boundary*, and it puts almost every training template's tactics
-on every message (tactic macro-F1 0.09 zero-shot). Few-shot helps the tactics and
-barely touches the decision bias. This is the clearest argument in the project
-against prompting an LLM for a detection task with a class imbalance: the model
-optimises for catching scams because that is what the prompt asks for.
+The prompted 7B model labels almost every message a scam - zero-shot 334 of 354,
+and still 316 of 354 after three examples. It has learned the *topic* of fraud
+detection rather than the *boundary*, and it stamps the training templates' tactics
+onto nearly everything (tactic macro-F1 0.09 zero-shot). Few-shot examples improve
+the tactic list and barely move the decision bias.
+
+**Fine-tuning fixes exactly that bias, for free.** A 135M model - 50x smaller than
+the 7B it is compared against - reaches F1 0.869 with precision 0.96, because the
+answer token it is trained to emit carries the prior from the corpus rather than the
+prior from the prompt. The residual weakness moved rather than disappeared: recall
+drops to 0.79 (it misses scams) while its tactic labels stay weak (0.18), so the
+decision is learned but the explanation is not.
+
+This is the clearest result in the project: for a detection task on an imbalanced
+corpus, **fine-tuning a small model beats prompting a large one**, and the failure
+mode of the prompted model is exactly the kind a careless evaluation hides behind
+an F1.
 
 ## 4. Per-language and per-script results with confidence intervals
 
@@ -145,6 +156,7 @@ messages on one laptop, against 2.6 seconds for XLM-R on the same CPU.
 | xlmr-base | 0.9267 | 0.9400 | not extracted |
 | llm-0shot | 0.0919 | 0.2199 | n/a |
 | llm-3shot | 0.4030 | 0.5016 | n/a |
+| lora-SmolLM2-135M | 0.1822 | - | n/a |
 
 Tactic scores are measured on the 230 validation rows that carry gold tactic
 labels. Those labels come from the template packs, so they measure "which
@@ -169,7 +181,10 @@ not invent quotes.
    the per-language table over-represents Bengali relative to real traffic.
 3. **Tactic labels are template-derived** for every training row, so tactic
    metrics are optimistic by construction.
-4. **MuRIL was not run** (gated repository), and the prompted LLM was run with one
-   model and one prompt.
+4. **MuRIL was not run** (gated repository), the prompted LLM was run with one
+   model and one prompt, and the LoRA arm is a 135M model trained for one epoch
+   because Hugging Face throttled the larger checkpoint in this environment.
+5. **No model was quantised or exported**, so the encoders carry 1.1 GB fp32
+   weights; that is Phase 5 work and it will change the latency table.
 5. **Cost per 1,000 messages** is computed for the local case; the API figure is
    arithmetic on measured token counts at a stated price, not a billed amount.

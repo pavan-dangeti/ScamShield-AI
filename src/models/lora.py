@@ -158,9 +158,17 @@ def train(model_name: str, config: dict, device_override: str | None = None) -> 
 
 @torch.no_grad()
 def _val_loss(model, loader, device) -> float:
+    """Mean loss over batches that contain at least one supervised answer token.
+
+    A row whose prompt fills ``max_length`` has every label masked to -100, and the
+    cross-entropy of such a batch is NaN; those batches are skipped rather than
+    poisoning the reported number.
+    """
     model.eval()
     total, count = 0.0, 0
     for batch in loader:
+        if not (batch["labels"] != -100).any():
+            continue
         batch = {key: value.to(device) for key, value in batch.items()}
         total += model(**batch).loss.item()
         count += 1

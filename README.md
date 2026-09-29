@@ -108,10 +108,14 @@ same rows for both, because generation is slow) —
 |---|---|---|---|---|---|---|
 | llm-0shot | Qwen2.5-7B-Instruct-4bit, rules + JSON | 0.5329 | 0.9889 | 0.6926 | 0.0919 | `python -m src.models.llm_prompted --shots 0 --limit 400` |
 | llm-3shot | same model, 3 examples | 0.5696 | 1.0000 | 0.7258 | 0.4030 | `python -m src.models.llm_prompted --shots 3 --limit 400` |
+| lora-SmolLM2-135M | SmolLM2-135M + LoRA r=16, 1 epoch | 0.9597 | 0.7944 | 0.8693 | 0.1822 | `python -m src.models.lora --model HuggingFaceTB/SmolLM2-135M-Instruct --config configs/lora_smollm135m.json --device cpu` |
 
-The prompted LLM flags 334 of 354 messages as scam. Few-shot examples improve its
-tactic list and barely dent that bias: a prompted model learns the *topic* of fraud
-detection, not the decision boundary.
+The prompted LLM flags 334 of 354 messages as scam (316 of 354 with three
+examples): a prompted model learns the *topic* of fraud detection, not the decision
+boundary. **Fine-tuning a 135M model - 50x smaller than the 7B it is compared
+against - reaches F1 0.869 at precision 0.96**, because the answer token it is
+trained to emit carries the corpus prior instead of the prompt's prior. For an
+imbalanced detection task, fine-tuning a small model beats prompting a large one.
 
 **Confidence intervals and calibration** —
 `python -m scripts.evaluate_with_ci --models tfidf-lr indicbertv2-mlm xlmr-base`

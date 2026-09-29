@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 
 import numpy as np
@@ -15,7 +16,9 @@ def load_lora(model_name: str):
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     directory = os.path.join("models", f"lora_{model_name}")
-    base = f"Qwen/{model_name.split('__')[-1]}" if "__" in model_name else model_name
+    # The adapter config records the exact base checkpoint it was trained against.
+    with open(os.path.join(directory, "adapter_config.json"), encoding="utf-8") as handle:
+        base = json.load(handle)["base_model_name_or_path"]
     tokenizer = AutoTokenizer.from_pretrained(directory)
     model = AutoModelForCausalLM.from_pretrained(base, dtype=torch.bfloat16)
     model = PeftModel.from_pretrained(model, directory)
