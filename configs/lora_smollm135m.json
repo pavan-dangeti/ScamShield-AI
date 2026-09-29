@@ -1,0 +1,17 @@
+{
+  "name": "lora-smollm2-135m",
+  "seed": 42,
+  "max_length": 256,
+  "batch_size": 8,
+  "epochs": 1,
+  "lr": 0.0001,
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.05,
+  "target_modules": [
+    "q_proj",
+    "v_proj"
+  ],
+  "device": "cpu",
+  "note": "1 epoch over the full training split; 2 epochs would take 69 min on CPU at 1.19 s/step"
+}

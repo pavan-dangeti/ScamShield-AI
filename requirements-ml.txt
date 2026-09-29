@@ -1,0 +1,11 @@
+# Training and evaluation of the neural models (Phases 2-3).
+# Kept out of requirements.txt so the API can run without a 2 GB torch install.
+-r requirements.txt
+torch
+transformers
+peft
+accelerate
+pyarrow
+# Optional, macOS/Apple silicon only: local synthetic generation and the
+# prompted-LLM arm. Everything has a hosted or Colab alternative.
+# mlx-lm

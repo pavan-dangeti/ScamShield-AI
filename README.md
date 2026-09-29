@@ -85,6 +85,69 @@ Adding a new language requires **zero code changes** — just a new JSON languag
 
 ---
 
+## 📊 Results
+
+Every number below is produced by a script in this repository, and the command
+that regenerates it is shown. Full method, per-language breakdown, confidence
+intervals and limitations: [`docs/model_comparison.md`](docs/model_comparison.md).
+
+**Validation split, 1,554 rows, threshold 0.5** —
+`python -m scripts.evaluate_models --models tfidf-lr indicbertv2-mlm xlmr-base`
+
+| Model | What it is | Precision | Recall | F1 | ROC-AUC | Tactic macro-F1 | Command |
+|---|---|---|---|---|---|---|---|
+| tfidf-lr | retrained baseline, TF-IDF + LR | 0.8522 | 0.9722 | 0.9082 | 0.9892 | 0.8254 | `python -m scripts.train_tfidf` |
+| indicbertv2-mlm | IndicBERTv2 fine-tuned, 7 heads | 0.9980 | 0.9881 | 0.9930 | 1.0000 | 0.9621 | `python -m src.models.transformer --model ai4bharat/IndicBERTv2-MLM-only --config configs/indicbertv2.json` |
+| xlmr-base | XLM-R base fine-tuned, 7 heads | 0.9941 | 1.0000 | 0.9970 | 0.9999 | 0.9267 | `python -m src.models.transformer --model xlm-roberta-base --config configs/xlmr.json` |
+
+**Prompted and LoRA-tuned LLMs, on a 354-row seeded stratified subsample** (the
+same rows for both, because generation is slow) —
+`python -m scripts.evaluate_models --models llm-0shot llm-3shot --subsample 400`
+
+| Model | What it is | Precision | Recall | F1 | Tactic macro-F1 | Command |
+|---|---|---|---|---|---|---|
+| llm-0shot | Qwen2.5-7B-Instruct-4bit, rules + JSON | 0.5329 | 0.9889 | 0.6926 | 0.0919 | `python -m src.models.llm_prompted --shots 0 --limit 400` |
+| llm-3shot | same model, 3 examples | 0.5696 | 1.0000 | 0.7258 | 0.4030 | `python -m src.models.llm_prompted --shots 3 --limit 400` |
+
+The prompted LLM flags 334 of 354 messages as scam. Few-shot examples improve its
+tactic list and barely dent that bias: a prompted model learns the *topic* of fraud
+detection, not the decision boundary.
+
+**Confidence intervals and calibration** —
+`python -m scripts.evaluate_with_ci --models tfidf-lr indicbertv2-mlm xlmr-base`
+
+| Model | F1 (95% CI, 2,000 bootstrap) | Macro F1 over cells | Brier | ECE |
+|---|---|---|---|---|
+| tfidf-lr | 0.9082 (0.889 - 0.926) | 0.9277 | 0.0495 | 0.0631 |
+| indicbertv2-mlm | 0.9930 (0.987 - 0.998) | 0.9972 | 0.0040 | 0.0059 |
+| xlmr-base | 0.9970 (0.993 - 1.000) | 0.9965 | 0.0023 | 0.0037 |
+
+**Cost of a mistake.** Treating a missed scam as 10x a false alarm, the
+cost-optimal threshold is 0.30 for the baseline (from 0.45 at best-F1) and 0.45 for
+XLM-R, where the choice does not matter. The full 0.05-0.95 sweep is in
+`results/evaluation_with_ci.json`.
+
+**Latency on CPU, 100 messages** —
+`python -m scripts.benchmark_latency --models tfidf-lr indicbertv2-mlm xlmr-base --n 100 --device cpu`
+
+| Model | p50 | p95 | Throughput | Artefact |
+|---|---|---|---|---|
+| tfidf-lr | 2.31 ms | 4.00 ms | 389 msg/s | 10.2 MB |
+| indicbertv2-mlm | 38.67 ms | 134.74 ms | 20.6 msg/s | 1120 MB |
+| xlmr-base | 31.89 ms | 82.70 ms | 26.3 msg/s | 1129 MB |
+
+The prompted 7B LLM costs about $0.004 and 60 minutes per 1,000 messages on
+local hardware, or $0.14 per 1,000 via a hosted API at a blended $0.30/1M tokens
+(`python -m scripts.llm_cost --shots 3`).
+
+> **What these numbers do and do not mean.** They are **validation** numbers on a corpus
+> that is still mostly synthetic. The hand-verified real-message test set is not frozen yet,
+> so no number here measures the product on real traffic. The weak spot the breakdown does
+> surface: the baseline scores 0.652 F1 on Bengali native (precision 0.48) - it flags most
+> legitimate Bengali messages as scams, an error invisible in the aggregate.
+
+---
+
 ## 🗂️ Data and the hand-verified test set
 
 ScamShield separates three things that are easy to confuse:
@@ -161,8 +224,8 @@ corpus, what is real vs. synthetic vs. unverified, and the known biases.
 ### Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/scamshield.git
-cd scamshield
+git clone https://github.com/pavan-dangeti/ScamShield-AI.git
+cd ScamShield-AI
 pip install -r requirements.txt
 cp .env.example .env
 ```

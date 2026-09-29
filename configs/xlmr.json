@@ -1,0 +1,10 @@
+{
+  "name": "xlmr-base",
+  "seed": 42,
+  "max_length": 160,
+  "batch_size": 16,
+  "epochs": 3,
+  "lr": 2e-5,
+  "weight_decay": 0.01,
+  "dropout": 0.1
+}
