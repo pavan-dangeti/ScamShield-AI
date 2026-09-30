@@ -2,225 +2,353 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ScamShield test-set labeller</title>
 <style>
-  :root { color-scheme: dark; --bg:#10131a; --panel:#181c26; --line:#2a3040; --text:#e8ecf4; --muted:#98a2b8; --ok:#3ddc84; --bad:#ff6b6b; --warn:#ffc857; }
+  :root { color-scheme: dark; --bg:#10131a; --panel:#181c26; --line:#2a3040; --text:#e8ecf4; --muted:#98a2b8; --ok:#3ddc84; --bad:#ff6b6b; --warn:#ffc857; --sel:#1d3557; --selb:#3a6ea5; }
   * { box-sizing: border-box; }
   body { margin:0; font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); }
-  header { padding:18px 24px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
+  header { padding:14px 24px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
   h1 { font-size:18px; margin:0; font-weight:600; }
   .muted { color:var(--muted); font-size:14px; }
-  main { display:grid; grid-template-columns: minmax(0,1fr) 320px; gap:24px; padding:24px; align-items:start; }
-  @media (max-width: 900px) { main { grid-template-columns:1fr; } }
-  .msg { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:22px; min-height:180px; }
-  .msg .cell { font-size:13px; color:var(--muted); margin-bottom:14px; }
-  .msg .text { font-size:22px; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
-  .keys { margin-top:18px; display:flex; flex-wrap:wrap; gap:8px; font-size:14px; color:var(--muted); }
-  kbd { background:#0d1017; border:1px solid var(--line); border-bottom-width:2px; border-radius:6px; padding:2px 7px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--text); }
-  .tactics { margin-top:18px; display:none; }
-  .tactics.show { display:block; }
-  .tactics button { background:#0d1017; border:1px solid var(--line); color:var(--text); border-radius:999px; padding:8px 14px; margin:0 6px 8px 0; cursor:pointer; font-size:14px; }
-  .tactics button.on { background:#1d3557; border-color:#3a6ea5; }
-  aside { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; }
-  aside h2 { font-size:14px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 10px; }
-  .bar { height:10px; background:#0d1017; border-radius:999px; overflow:hidden; margin:8px 0 4px; }
-  .bar > span { display:block; height:100%; background:var(--ok); }
-  button.action { width:100%; margin-top:8px; padding:10px; border-radius:8px; border:1px solid var(--line); background:#0d1017; color:var(--text); cursor:pointer; font-size:14px; }
-  textarea { width:100%; min-height:90px; background:#0d1017; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; }
+  .modes { display:flex; gap:8px; margin-left:auto; flex-wrap:wrap; }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:24px; padding:24px; align-items:start; }
+  @media (max-width: 960px) { main { grid-template-columns:1fr; } }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .meta { font-size:13px; color:var(--muted); margin-bottom:12px; }
+  .text { font-size:22px; line-height:1.6; white-space:pre-wrap; word-break:break-word; min-height:120px; }
+  .group { margin-top:18px; }
+  .group > .label { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:8px; }
+  button { font:inherit; color:var(--text); background:#0d1017; border:1px solid var(--line); border-radius:8px; padding:8px 14px; cursor:pointer; }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline:2px solid var(--selb); outline-offset:2px; }
+  button.on { background:var(--sel); border-color:var(--selb); }
+  button.legit.on { background:#123524; border-color:var(--ok); }
+  button.scam.on { background:#3d1418; border-color:var(--bad); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.primary { background:var(--sel); border-color:var(--selb); }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chips button { border-radius:999px; font-size:14px; }
+  kbd { background:#0d1017; border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; padding:0 6px; font:12px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   select, input[type=text] { background:#0d1017; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px; font:inherit; }
-  .row { display:flex; gap:8px; margin-top:8px; }
-  .row > * { flex:1; }
-  .note { color:var(--warn); font-size:13px; margin-top:8px; }
-  .done { color:var(--ok); }
+  input[type=text] { width:100%; }
+  .bar { height:8px; background:#0d1017; border-radius:999px; overflow:hidden; margin:6px 0; }
+  .bar > span { display:block; height:100%; background:var(--ok); transition:width .2s; }
+  aside h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:18px 0 8px; }
+  aside h2:first-child { margin-top:0; }
+  aside dl { margin:0; font-size:13px; }
+  aside dt { font-weight:600; margin-top:8px; }
+  aside dd { margin:0; color:var(--muted); }
+  .note { color:var(--warn); font-size:14px; min-height:21px; margin-top:12px; }
+  .status { font-size:13px; color:var(--muted); }
+  .stack > * + * { margin-top:8px; }
+  .full { width:100%; }
 </style>
 </head>
 <body>
 <header>
   <h1>ScamShield test-set labeller</h1>
-  <span class="muted">Load <code>data/test_candidates/candidates.jsonl</code>, label every message, then press <b>Export</b>.</span>
+  <span class="muted">Guidelines v1 · <a href="../labeling_guidelines.md" style="color:var(--muted)">labeling_guidelines.md</a></span>
+  <div class="modes">
+    <button data-mode="primary" id="m-primary">Label</button>
+    <button data-mode="review" id="m-review">Review flagged</button>
+    <button data-mode="recheck" id="m-recheck">Blind re-check</button>
+  </div>
 </header>
 <main>
   <section>
-    <div class="msg">
-      <div class="cell" id="cell">&nbsp;</div>
-      <div class="text" id="text">Choose <em>Load candidates</em> to begin.</div>
-      <div class="tactics" id="tactics"></div>
-    </div>
-    <div class="keys">
-      <span><kbd>1</kbd> legitimate</span>
-      <span><kbd>2</kbd> scam</span>
-      <span><kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd><kbd>V</kbd><kbd>B</kbd><kbd>N</kbd> toggle tactic (scam only)</span>
-      <span><kbd>Enter</kbd> save &amp; next</span>
-      <span><kbd>U</kbd> undo</span>
-      <span><kbd>S</kbd> skip</span>
-      <span><kbd>←</kbd><kbd>→</kbd> navigate</span>
+    <div class="card">
+      <div class="meta" id="meta">&nbsp;</div>
+      <div class="text" id="text">Load the candidate pool to begin (right-hand panel).</div>
+
+      <div class="group">
+        <div class="label">Would a reasonable person lose money, credentials or account access by acting on this?</div>
+        <div class="row">
+          <button class="legit" id="b-legit"><kbd>1</kbd> Legitimate</button>
+          <button class="scam" id="b-scam"><kbd>2</kbd> Scam</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Tactics present (scam only, at least one)</div>
+        <div class="chips" id="tactics"></div>
+      </div>
+
+      <div class="group row">
+        <button id="b-unsure"><kbd>F</kbd> Unsure</button>
+        <select id="skipReason" aria-label="Skip reason">
+          <option value="ambiguous">ambiguous (guidelines §3 "ask")</option>
+          <option value="garbled">garbled / truncated</option>
+          <option value="not_a_message">not a standalone message</option>
+          <option value="personal_data">contains personal data</option>
+        </select>
+        <button id="b-skip"><kbd>S</kbd> Skip</button>
+      </div>
+
+      <div class="group">
+        <input type="text" id="noteInput" aria-label="Note" placeholder="Optional note (why, if unsure)  ·  Esc to leave the field">
+      </div>
+
+      <div class="group row">
+        <button id="b-prev"><kbd>←</kbd> Back</button>
+        <button class="primary" id="b-save"><kbd>Enter</kbd> Save &amp; next</button>
+        <button id="b-next">Next <kbd>→</kbd></button>
+      </div>
+      <div class="note" id="note" role="status"></div>
     </div>
   </section>
-  <aside>
+
+  <aside class="card">
     <h2>Progress</h2>
     <div class="bar"><span id="bar" style="width:0%"></span></div>
-    <div class="muted" id="count">0 / 0 labelled</div>
-    <h2 style="margin-top:18px">Data</h2>
-    <input type="file" id="file" accept=".jsonl,application/json" />
-    <button class="action" id="loadBtn">Load candidates</button>
-    <button class="action" id="exportBtn">Export labels (.jsonl)</button>
-    <div class="note" id="note"></div>
-    <h2 style="margin-top:18px">Add your own message</h2>
-    <textarea id="own" placeholder="Paste a real message you received (remove names and your own number)"></textarea>
-    <div class="row">
-      <select id="ownLang">
-        <option value="english">english</option><option value="hindi">hindi</option>
-        <option value="tamil">tamil</option><option value="telugu">telugu</option>
-        <option value="bengali">bengali</option>
-      </select>
-      <select id="ownScript">
-        <option value="native">native</option><option value="romanized">romanized</option><option value="latin">latin</option>
-      </select>
+    <div class="status" id="count">No pool loaded</div>
+
+    <h2>Setup</h2>
+    <div class="stack">
+      <input type="text" id="annotator" aria-label="Annotator ID" placeholder="Your annotator ID (e.g. initials)">
+      <input type="file" id="file" accept=".jsonl" aria-label="Candidate pool file">
+      <button class="full" id="b-load">Load candidates.jsonl</button>
+      <button class="full" id="b-import">Resume from an exported labels.jsonl</button>
+      <input type="file" id="importFile" accept=".jsonl" hidden>
+      <button class="full primary" id="b-export">Export labels.jsonl</button>
+      <div class="status" id="saved"></div>
     </div>
-    <button class="action" id="ownBtn">Add to queue</button>
+
+    <h2>Tactics (guidelines §4)</h2>
+    <dl id="defs"></dl>
+
+    <h2>How the set is kept honest</h2>
+    <p class="status" style="margin:0">Order is shuffled and the source is hidden, so earlier items do not prime later ones.
+      After the pass, ~10% of items come back in <b>Blind re-check</b> without your earlier answer
+      to measure self-agreement. <code>freeze_test</code> also compares your labels with the
+      original UCI annotation, which this tool never shows.</p>
   </aside>
 </main>
 <script>
-const TACTICS = ["urgency","authority_impersonation","false_reward","loss_aversion","credential_phishing","suspicious_link"];
-const KEYS = ["z","x","c","v","b","n"];
-let queue = [], index = 0, labels = {}, history = [];
-const store = { load: () => JSON.parse(localStorage.getItem("ss_labels") || "{}") };
+"use strict";
+const GUIDELINES_VERSION = "v1";
+const TACTICS = [
+  ["urgency", "z", "Pressure to act now: minutes-long deadlines, 'last chance'. Not a normal due date."],
+  ["authority_impersonation", "x", "Claims to be a bank, RBI, tax dept, police, courier, govt scheme."],
+  ["false_reward", "c", "Prize, lottery, cashback, refund, 'you have been selected'."],
+  ["loss_aversion", "v", "Threat of a loss: blocked account, suspended card, penalty, legal action."],
+  ["credential_phishing", "b", "Asks for OTP, PIN, password, CVV, card number. Not a message that merely contains an OTP."],
+  ["suspicious_link", "n", "Shortened or misspelled link, 'click to verify', a call-back number to act on."],
+];
+const RECHECK_EVERY = 10;  // ~10% of labelled items come back blind
 
-function save() { localStorage.setItem("ss_labels", JSON.stringify(labels)); }
+let pool = [], poolKey = "", mode = "primary", queue = [], index = 0;
+let entries = { primary: {}, recheck: {} };
+let draft = null, shownAt = 0;
 
-function render() {
-  const item = queue[index];
-  const text = document.getElementById("text"), cell = document.getElementById("cell");
-  if (!item) { text.textContent = "All done. Export your labels."; cell.innerHTML = "&nbsp;"; return; }
-  const existing = labels[item.id] || {};
-  cell.textContent = `${item.language} / ${item.script}  ·  ${index + 1} of ${queue.length}  ·  source: ${item.source}`;
-  text.textContent = item.text;
-  const box = document.getElementById("tactics");
-  box.classList.toggle("show", existing.label === "scam" || document.body.dataset.pending === "scam");
-  box.innerHTML = TACTICS.map((t, i) => {
-    const on = (existing.tactics || []).includes(t);
-    return `<button data-tactic="${t}" class="${on ? "on" : ""}">${KEYS[i].toUpperCase()} · ${t.replace(/_/g, " ")}</button>`;
-  }).join("");
-  const done = Object.keys(labels).length;
-  document.getElementById("count").textContent = `${done} / ${queue.length} labelled`;
-  document.getElementById("bar").style.width = queue.length ? (100 * done / queue.length) + "%" : "0%";
-  document.body.dataset.pending = "";
+const $ = id => document.getElementById(id);
+
+// FNV-1a: a stable, seedable order that survives reloads without storing it.
+function hash(s) { let h = 0x811c9dc5; for (const c of s) { h ^= c.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; } return h; }
+const byHash = salt => (a, b) => hash(salt + a.id) - hash(salt + b.id);
+
+function persist() {
+  try { localStorage.setItem(poolKey, JSON.stringify(entries)); $("saved").textContent = "Autosaved in this browser. Export regularly as a backup."; }
+  catch { $("saved").textContent = "Browser storage unavailable: export before closing this tab."; }
+}
+function restore() {
+  try { const raw = localStorage.getItem(poolKey); if (raw) entries = JSON.parse(raw); } catch { /* start fresh */ }
+  entries.primary ??= {}; entries.recheck ??= {};
 }
 
-function commit(label, tactics = []) {
+function primaryDone() { return pool.length > 0 && pool.every(item => entries.primary[item.id]); }
+function recheckItems() {
+  return pool.filter(item => { const e = entries.primary[item.id]; return e && !e.skipped && hash("recheck" + item.id) % RECHECK_EVERY === 0; })
+             .sort(byHash("recheck-order"));
+}
+function reviewItems() {
+  return pool.filter(item => { const e = entries.primary[item.id]; return e && (e.skipped || e.confidence === "unsure"); });
+}
+
+function buildQueue() {
+  if (mode === "primary") queue = [...pool].sort(byHash("order"));
+  else if (mode === "recheck") queue = recheckItems();
+  else queue = reviewItems().sort(byHash("order"));
+}
+
+function store() { return entries[mode === "recheck" ? "recheck" : "primary"]; }
+
+function setMode(next) {
+  if (next === "recheck" && !primaryDone()) { say("Finish the labelling pass first: the re-check has to be blind to recent answers."); return; }
+  mode = next; buildQueue();
+  index = Math.max(0, queue.findIndex(item => !store()[item.id]));
+  show();
+}
+
+function show() {
   const item = queue[index];
-  if (!item) return;
-  if (label === "scam" && tactics.length === 0) {
-    document.body.dataset.pending = "scam";
-    render();
-    document.getElementById("note").textContent = "Pick at least one tactic for a scam message.";
-    return;
+  for (const m of ["primary", "review", "recheck"]) $("m-" + m).classList.toggle("on", m === mode);
+  $("m-review").textContent = `Review flagged (${reviewItems().length})`;
+  $("m-recheck").textContent = `Blind re-check (${recheckItems().length})`;
+  $("m-recheck").disabled = !primaryDone();
+
+  const done = queue.filter(q => store()[q.id]).length;
+  $("bar").style.width = queue.length ? (100 * done / queue.length) + "%" : "0%";
+  $("count").textContent = pool.length
+    ? `${mode === "recheck" ? "Re-check" : mode === "review" ? "Review" : "Labelling"}: ${done} / ${queue.length}` +
+      ` · labelled ${Object.keys(entries.primary).length} / ${pool.length}`
+    : "No pool loaded";
+
+  if (!item) {
+    $("text").textContent = pool.length ? (mode === "review" ? "Nothing flagged." : "Nothing to show in this mode.") : "Load the candidate pool to begin (right-hand panel).";
+    $("meta").innerHTML = "&nbsp;"; draft = null; renderDraft(); return;
   }
-  history.push(index);
-  labels[item.id] = {
-    id: item.id, text: item.text, language: item.language, script: item.script,
-    label, tactics: label === "scam" ? tactics : [],
-    labelled_by: "owner", labelled_at: new Date().toISOString().slice(0, 10),
-  };
-  document.getElementById("note").textContent = "";
-  save();
-  if (index < queue.length - 1) { index += 1; }
-  render();
+  const saved = store()[item.id];
+  draft = saved
+    ? { label: saved.label, tactics: new Set(saved.tactics), confidence: saved.confidence, note: saved.note || "", seconds: saved.seconds || 0 }
+    : { label: null, tactics: new Set(), confidence: "sure", note: "", seconds: 0 };
+  shownAt = performance.now();
+  // Blind by design: no source, no hint label, no model score.  Language and
+  // script are shown because they decide which cell the row fills.
+  $("meta").textContent = `${index + 1} of ${queue.length} · ${item.language} / ${item.script}` + (saved ? (saved.skipped ? ` · skipped (${saved.skip_reason})` : " · saved") : "");
+  $("text").textContent = item.text;
+  renderDraft();
 }
 
-function undo() {
-  if (!history.length) return;
-  const previous = history.pop();
-  delete labels[queue[previous].id];
-  save();
-  index = previous;
-  render();
+function renderDraft() {
+  const d = draft || { label: null, tactics: new Set(), confidence: "sure", note: "" };
+  $("b-legit").classList.toggle("on", d.label === "legit");
+  $("b-scam").classList.toggle("on", d.label === "scam");
+  $("b-unsure").classList.toggle("on", d.confidence === "unsure");
+  $("tactics").innerHTML = "";
+  for (const [name, key, help] of TACTICS) {
+    const b = document.createElement("button");
+    b.className = d.tactics.has(name) ? "on" : "";
+    b.title = help;
+    b.innerHTML = `<kbd>${key.toUpperCase()}</kbd> ${name.replace(/_/g, " ")}`;
+    b.onclick = () => toggleTactic(name);
+    $("tactics").appendChild(b);
+  }
+  if (document.activeElement !== $("noteInput")) $("noteInput").value = d.note;
 }
 
-function loadCandidates(rows) {
-  queue = rows;
-  labels = store.load();
-  for (const row of queue) { if (labels[row.id]) labels[row.id] = labels[row.id]; }
-  index = 0;
-  while (index < queue.length - 1 && labels[queue[index].id]) index += 1;
-  render();
+function say(msg) { $("note").textContent = msg; }
+
+function setLabel(label) { if (!draft) return; draft.label = label; if (label === "legit") draft.tactics.clear(); say(""); renderDraft(); }
+function toggleTactic(name) {
+  if (!draft) return;
+  draft.tactics.has(name) ? draft.tactics.delete(name) : draft.tactics.add(name);
+  if (draft.tactics.size) draft.label = "scam";
+  renderDraft();
 }
 
-document.getElementById("loadBtn").onclick = () => {
-  const file = document.getElementById("file").files[0];
-  if (!file) { document.getElementById("note").textContent = "Pick a file first."; return; }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const rows = reader.result.split("\n").filter(Boolean).map(line => JSON.parse(line));
-    loadCandidates(rows);
-    document.getElementById("note").textContent = `Loaded ${rows.length} candidates.`;
-  };
-  reader.readAsText(file);
-};
-
-document.getElementById("exportBtn").onclick = () => {
-  const blob = new Blob([Object.values(labels).map(r => JSON.stringify(r)).join("\n") + "\n"],
-                        { type: "application/jsonl" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "labels.jsonl";
-  link.click();
-};
-
-document.getElementById("ownBtn").onclick = () => {
-  const text = document.getElementById("own").value.trim();
-  if (text.length < 10) { document.getElementById("note").textContent = "Message too short."; return; }
-  const row = { id: "own-" + Date.now(), text, language: document.getElementById("ownLang").value,
-                script: document.getElementById("ownScript").value, source: "user_contributed" };
-  queue.push(row); index = queue.length - 1;
-  document.getElementById("own").value = "";
-  render();
-};
-
-document.getElementById("tactics").onclick = event => {
-  const tactic = event.target.dataset.tactic;
-  if (!tactic) return;
+function record(extra) {
   const item = queue[index];
-  const existing = labels[item.id] || { tactics: [] };
-  const tactics = new Set(existing.tactics || []);
-  tactics.has(tactic) ? tactics.delete(tactic) : tactics.add(tactic);
-  if (existing.label === "scam") { existing.tactics = [...tactics]; save(); }
-  else { document.body.dataset.pending = "scam"; window.__pending = [...tactics]; }
-  render();
-};
+  const annotator = $("annotator").value.trim();
+  if (!annotator) { say("Enter your annotator ID first (right-hand panel)."); $("annotator").focus(); return; }
+  try { localStorage.setItem("scamshield-annotator", annotator); } catch { /* optional */ }
+  store()[item.id] = {
+    id: item.id, text: item.text, language: item.language, script: item.script,
+    pass: mode === "recheck" ? "recheck" : "primary",
+    label: null, skipped: false, skip_reason: null, tactics: [],
+    confidence: draft.confidence, note: $("noteInput").value.trim(),
+    annotator, guidelines_version: GUIDELINES_VERSION,
+    labelled_at: new Date().toISOString(),
+    seconds: Math.round((draft.seconds + (performance.now() - shownAt) / 1000) * 10) / 10,
+    ...extra,
+  };
+  persist(); say(""); advance();
+}
+
+function save() {
+  if (!draft) return;
+  if (!draft.label) { say("Choose Legitimate (1) or Scam (2)."); return; }
+  if (draft.label === "scam" && !draft.tactics.size) { say("A scam needs at least one tactic (Z X C V B N). If none fits, it is probably not a scam, or skip it."); return; }
+  record({ label: draft.label, tactics: draft.label === "scam" ? [...draft.tactics] : [] });
+}
+function skip() { if (draft) record({ skipped: true, skip_reason: $("skipReason").value }); }
+
+function advance() {
+  if (mode === "review") { buildQueue(); index = Math.min(index, Math.max(0, queue.length - 1)); show(); return; }
+  const next = queue.findIndex((item, i) => i > index && !store()[item.id]);
+  index = next === -1 ? Math.min(index + 1, queue.length - 1) : next;
+  show();
+  if (mode === "primary" && primaryDone()) say("Labelling pass complete. Review flagged items, then run the blind re-check.");
+  if (mode === "recheck" && queue.every(item => entries.recheck[item.id])) say("Re-check complete. Export labels.jsonl.");
+}
+function go(step) { index = Math.min(queue.length - 1, Math.max(0, index + step)); say(""); show(); }
+
+function parseJsonl(text) { return text.split("\n").filter(line => line.trim()).map(line => JSON.parse(line)); }
+
+function loadPool(rows) {
+  const bad = rows.filter(r => !r.id || typeof r.text !== "string");
+  if (bad.length) { say(`${bad.length} rows have no id or text; is this candidates.jsonl?`); return; }
+  pool = rows;
+  poolKey = "scamshield-labels:" + rows.length + ":" + hash(rows.map(r => r.id).join("|"));
+  entries = { primary: {}, recheck: {} }; restore();
+  setMode("primary"); say(`Loaded ${rows.length} candidates.`);
+}
+
+function importLabels(rows) {
+  if (!pool.length) { say("Load the candidate pool first, then resume from labels."); return; }
+  const ids = new Set(pool.map(r => r.id)); let n = 0;
+  for (const r of rows) { if (!ids.has(r.id)) continue; entries[r.pass === "recheck" ? "recheck" : "primary"][r.id] = r; n++; }
+  persist(); setMode("primary"); say(`Resumed ${n} labels.`);
+}
+
+function exportLabels() {
+  const rows = [...Object.values(entries.primary), ...Object.values(entries.recheck)];
+  if (!rows.length) { say("Nothing to export yet."); return; }
+  const blob = new Blob([rows.map(r => JSON.stringify(r)).join("\n") + "\n"], { type: "application/x-ndjson" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob); link.download = "labels.jsonl"; link.click();
+  say(`Exported ${rows.length} rows. Move the file to data/test_candidates/labels.jsonl.`);
+}
+
+function readFile(input, then) {
+  const file = input.files[0];
+  if (!file) { say("Pick a file first."); return; }
+  const reader = new FileReader();
+  reader.onload = () => { try { then(parseJsonl(reader.result)); } catch (e) { say("Could not parse the file: " + e.message); } };
+  reader.readAsText(file);
+}
+
+$("defs").innerHTML = TACTICS.map(([n, k, h]) => `<dt><kbd>${k.toUpperCase()}</kbd> ${n.replace(/_/g, " ")}</dt><dd>${h}</dd>`).join("");
+try { $("annotator").value = localStorage.getItem("scamshield-annotator") || ""; } catch { /* optional */ }
+$("b-load").onclick = () => readFile($("file"), loadPool);
+$("b-import").onclick = () => $("importFile").click();
+$("importFile").onchange = () => readFile($("importFile"), importLabels);
+$("b-export").onclick = exportLabels;
+$("b-legit").onclick = () => setLabel("legit");
+$("b-scam").onclick = () => setLabel("scam");
+$("b-unsure").onclick = () => { if (draft) { draft.confidence = draft.confidence === "unsure" ? "sure" : "unsure"; renderDraft(); } };
+$("b-skip").onclick = skip;
+$("b-save").onclick = save;
+$("b-prev").onclick = () => go(-1);
+$("b-next").onclick = () => go(1);
+for (const m of ["primary", "review", "recheck"]) $("m-" + m).onclick = () => setMode(m);
+window.addEventListener("beforeunload", e => { if (pool.length && Object.keys(entries.primary).length) e.preventDefault(); });
+
+// Served over http (python -m http.server from the repo root): load the pool automatically.
+if (location.protocol.startsWith("http")) {
+  fetch("../../data/test_candidates/candidates.jsonl").then(r => r.ok ? r.text() : Promise.reject())
+    .then(text => loadPool(parseJsonl(text))).catch(() => {});
+}
 
 document.addEventListener("keydown", event => {
-  if (event.target.tagName === "TEXTAREA" || event.target.tagName === "INPUT" || event.target.tagName === "SELECT") return;
-  const item = queue[index];
-  if (!item) return;
-  const key = event.key.toLowerCase();
-  if (key === "arrowright") { index = Math.min(queue.length - 1, index + 1); render(); return; }
-  if (key === "arrowleft") { index = Math.max(0, index - 1); render(); return; }
-  if (key === "u") { undo(); return; }
-  if (key === "s") { delete labels[item.id]; save(); index = Math.min(queue.length - 1, index + 1); render(); return; }
-  if (key === "enter") {
-    const existing = labels[queue[index - 1]] || {};
-    const pending = window.__pending || [];
-    if (existing.label) commit(existing.label, existing.tactics || []);
-    else if (pending.length) commit("scam", pending);
-    else if (window.__pendingLabel) commit(window.__pendingLabel, []);
+  const tag = event.target.tagName;
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") {
+    if (event.key === "Escape") event.target.blur();
+    if (event.key === "Enter" && event.target.id === "noteInput") { event.preventDefault(); event.target.blur(); save(); }
     return;
   }
-  if (key === "1") { window.__pendingLabel = "legit"; window.__pending = []; commit("legit", []); return; }
-  if (key === "2") { window.__pendingLabel = "scam"; document.body.dataset.pending = "scam";
-                     document.getElementById("note").textContent = "Pick tactics with Z X C V B N, then Enter."; return; }
-  const tacticIndex = KEYS.indexOf(key);
-  if (tacticIndex >= 0) {
-    const tactic = TACTICS[tacticIndex];
-    const pending = new Set(window.__pending || []);
-    pending.has(tactic) ? pending.delete(tactic) : pending.add(tactic);
-    window.__pending = [...pending];
-    window.__pendingLabel = "scam";
-    document.body.dataset.pending = "scam";
-    render();
-  }
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  const key = event.key.toLowerCase();
+  const tactic = TACTICS.find(([, k]) => k === key);
+  if (key === "1") setLabel("legit");
+  else if (key === "2") setLabel("scam");
+  else if (tactic) toggleTactic(tactic[0]);
+  else if (key === "f") $("b-unsure").click();
+  else if (key === "s") skip();
+  else if (key === "enter") { event.preventDefault(); save(); }
+  else if (key === "arrowright") go(1);
+  else if (key === "arrowleft") go(-1);
 });
-render();
 </script>
 </body>
 </html>

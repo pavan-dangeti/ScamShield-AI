@@ -251,6 +251,39 @@ def test_freeze_keeps_valid_labels_and_writes_test_set(tmp_path, monkeypatch):
     assert "Total rows: **2**" in (tmp_path / "test_set.md").read_text(encoding="utf-8")
 
 
+def test_freeze_reports_self_agreement_and_uci_disagreements(tmp_path, monkeypatch):
+    texts = ["Free prize click now", "Your account was credited with Rs 500", "50% off pizza this weekend"]
+    candidates = [
+        {"id": f"test-uci-{i}", "text": text, "language": "english", "script": "latin", "label": None,
+         "tactics": [], "source": "uci_sms_spam", "provenance": "real", "synthetic": False,
+         "cell": "english|latin"}
+        for i, text in enumerate(texts)
+    ]
+    labels = [
+        {"id": "test-uci-0", "text": texts[0], "label": "scam", "tactics": ["false_reward"], "pass": "primary",
+         "confidence": "sure", "annotator": "ab", "seconds": 3.0},
+        {"id": "test-uci-1", "text": texts[1], "label": "legit", "tactics": [], "pass": "primary",
+         "confidence": "unsure", "annotator": "ab", "seconds": 5.0},
+        {"id": "test-uci-2", "text": texts[2], "label": "legit", "tactics": [], "pass": "primary",
+         "confidence": "sure", "annotator": "ab", "seconds": 4.0},
+        {"id": "test-uci-0", "text": texts[0], "label": "scam", "tactics": ["false_reward"], "pass": "recheck"},
+        {"id": "test-uci-1", "text": texts[1], "label": "legit", "tactics": [], "pass": "recheck"},
+    ]
+    # UCI calls the pizza offer spam; the guidelines call marketing legitimate.
+    uci = pd.DataFrame({"id": ["uci-0", "uci-1", "uci-2"], "label": ["scam", "legit", "scam"]})
+    monkeypatch.setattr(freeze_test, "load_uci", lambda: uci)
+    _run_freeze(tmp_path, monkeypatch, candidates, labels)
+
+    frozen = [json.loads(line) for line in open(tmp_path / "test.jsonl", encoding="utf-8")]
+    assert len(frozen) == 3, "re-check rows must not become extra test rows"
+    assert {row["id"]: row["confidence"] for row in frozen}["test-uci-1"] == "unsure"
+    doc = (tmp_path / "test_set.md").read_text(encoding="utf-8")
+    assert "Re-checked items: 2; same decision: 2 (100.0%)" in doc
+    assert "Cohen's kappa, scam/legit: 1.000" in doc
+    assert "Compared rows: 3; disagreements: 1" in doc
+    assert "| test-uci-2 | legit | scam | 50% off pizza this weekend |" in doc
+
+
 # --- language packs (regression for the path bug) -------------------------
 
 
