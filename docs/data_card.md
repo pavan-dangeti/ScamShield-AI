@@ -72,8 +72,10 @@ the target count.  The test set is never used for training, model selection, or
 threshold tuning; the decision threshold is chosen on the validation split.
 
 The owner labels with `docs/labeling/labeler.html` against
-`docs/labeling_guidelines.md` v1.  It is a single-rater set unless a second
-labeller covers 10% of the rows and reports agreement.
+`docs/labeling_guidelines.md` v1, blind to the source and its original label.
+Label quality is measured two ways and reported in `docs/test_set.md`:
+self-agreement against a blind re-check of ~10% of items, and agreement with the
+original UCI annotation as an independent second rater.
 
 **Current state: not yet frozen.** Only the English cell has a licence-clean
 real source (UCI). The other eight cells wait on owner-supplied messages.
