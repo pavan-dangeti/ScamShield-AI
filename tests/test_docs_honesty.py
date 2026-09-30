@@ -66,6 +66,23 @@ def test_readme_has_no_unmarked_placeholders():
         assert placeholder not in readme, f"placeholder left in README: {placeholder}"
 
 
+def test_model_card_numbers_match_the_harness():
+    """A model card that quotes stale numbers is worse than no model card."""
+    import json
+
+    card = open(os.path.join(REPO_ROOT, "docs", "model_card.md"), encoding="utf-8").read()
+    ci_path = os.path.join(REPO_ROOT, "results", "evaluation_with_ci_aug.json")
+    rob_path = os.path.join(REPO_ROOT, "results", "robustness.json")
+    if not (os.path.exists(ci_path) and os.path.exists(rob_path)):
+        pytest.skip("no evaluation output present; run the eval scripts first")
+    ci = json.load(open(ci_path, encoding="utf-8"))["models"]["xlmr-base-aug"]
+    rob = json.load(open(rob_path, encoding="utf-8"))["models"]["xlmr-base-aug"]
+    assert f"{ci['f1']:.4f}" in card, "model card F1 is stale"
+    assert f"{ci['brier']:.4f}" in card, "model card Brier is stale"
+    mean_flip = sum(a["flip_rate"] for a in rob["attacks"].values()) / len(rob["attacks"])
+    assert f"{mean_flip:.3f}" in card, "model card flip rate is stale"
+
+
 def test_docs_state_how_each_number_is_produced():
     doc = open(os.path.join(REPO_ROOT, "docs", "model_comparison.md"), encoding="utf-8").read()
     assert re.search(r"python -m scripts\.\w+", doc), "model comparison doc quotes no commands"

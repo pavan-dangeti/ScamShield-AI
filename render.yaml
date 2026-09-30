@@ -1,0 +1,28 @@
+# Render blueprint.
+#
+# The live demo previously returned "Models are not trained" because nothing ever
+# produced a model artefact during the build. This build command fetches the
+# licence-checked corpus and trains the 10 MB TF-IDF baseline, which takes about
+# two minutes and fits comfortably on Render's free tier. The heavier int8 ONNX
+# encoder is not built here (it needs a 278 MB artefact); set SCAMSHIELD_MODEL
+# after deploying if you want to serve it.
+services:
+  - type: web
+    name: scamshield
+    runtime: python
+    plan: free
+    buildCommand: |
+      pip install -r requirements.txt
+      python -m scripts.download_data
+      python -m scripts.build_dataset
+      python -m scripts.train_tfidf
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: SCAMSHIELD_MODEL
+        value: tfidf-lr
+      # The dashboard is served by this same app, so add your deployed origin here.
+      - key: ALLOWED_ORIGINS
+        value: "https://scamshield-ai-glhm.onrender.com"

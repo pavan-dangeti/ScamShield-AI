@@ -75,7 +75,10 @@ class MlxChat:
 
         self._generate = generate
         self._sampler = make_sampler(temp=temperature, top_p=1.0) if temperature else make_sampler(temp=0.0)
-        self.model, self.tokenizer = load(model)
+        # mlx_lm.load returns (model, tokenizer) by default and a 3-tuple when
+        # return_config=True; unpack tolerantly so a future default change is not a crash.
+        loaded = load(model)
+        self.model, self.tokenizer = loaded[0], loaded[1]
 
     def __call__(self, system: str, user: str, max_tokens: int = 160) -> str:
         messages = [

@@ -176,8 +176,10 @@ def _evaluate(model, loader, device, config) -> dict:
     from sklearn.metrics import f1_score, precision_score, recall_score
 
     model.eval()
-    binary_true, binary_pred = [], []
-    tactic_true, tactic_pred = [], []
+    binary_true: list[float] = []
+    binary_pred: list[float] = []
+    tactic_true: list[np.ndarray] = []
+    tactic_pred: list[np.ndarray] = []
     for batch in loader:
         inputs = {k: v.to(device) for k, v in batch.items() if k in ("input_ids", "attention_mask", "token_type_ids")}
         binary_logits, tactic_logits = model(**inputs)
@@ -185,17 +187,17 @@ def _evaluate(model, loader, device, config) -> dict:
         binary_pred.extend((torch.sigmoid(binary_logits) >= 0.5).float().cpu().numpy().tolist())
         tactic_true.extend(batch["labels"][:, 1:].numpy())
         tactic_pred.extend((torch.sigmoid(tactic_logits) >= 0.5).float().cpu().numpy())
-    tactic_true = np.array(tactic_true)
-    tactic_pred = np.array(tactic_pred)
+    tactic_true_array = np.array(tactic_true)
+    tactic_pred_array = np.array(tactic_pred)
     return {
         "precision": float(precision_score(binary_true, binary_pred, zero_division=0)),
         "recall": float(recall_score(binary_true, binary_pred, zero_division=0)),
         "f1": float(f1_score(binary_true, binary_pred, zero_division=0)),
         "macro_f1": float(
-            f1_score(tactic_true, tactic_pred, average="macro", zero_division=0)
+            f1_score(tactic_true_array, tactic_pred_array, average="macro", zero_division=0)
         ),
         "tactic_micro_f1": float(
-            f1_score(tactic_true, tactic_pred, average="micro", zero_division=0)
+            f1_score(tactic_true_array, tactic_pred_array, average="micro", zero_division=0)
         ),
         "config": config.get("name", "default"),
     }

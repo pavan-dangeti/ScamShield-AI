@@ -8,6 +8,7 @@ from typing import Dict, Any, List
 from scipy.sparse import hstack
 from src.detector import ScriptLanguageDetector
 from src.database import log_prediction
+from src.model_registry import load_predictor, resolve_model_name
 from src.taxonomy import TACTICS
 
 class ScamShieldInference:
@@ -28,6 +29,9 @@ class ScamShieldInference:
         self.binary_model = None
         self.tactic_models = {}
         self.explanations = {}
+        
+        # Production predictor (ONNX encoder by default, TF-IDF fallback)
+        self.predictor = load_predictor(resolve_model_name())
         
         self.load_artifacts()
     def load_artifacts(self):
@@ -98,18 +102,31 @@ class ScamShieldInference:
                         return w
             return best_term
         return "suspicious phrasing"
-    def build_explanation(self, detected_tactics_list: List[Dict[str, Any]]) -> str:
+    def build_explanation(self, detected_tactics_list: List[Dict[str, Any]], label: str = "scam") -> str:
         """
-        Constructs a plain-language explanation of why the message is flagged.
+        Constructs a plain-language explanation of why the message was flagged.
+
+        ``label`` is passed explicitly because a model can flag a message as a scam
+        without clearing the threshold on any single tactic head; keying the
+        explanation off the tactic list alone would then describe a scam as
+        legitimate.
         """
-        if not self.explanations:
-            return "This message contains patterns characteristic of financial scams."
         templates = self.explanations.get("explanation_templates", {})
+        if not self.explanations:
+            if label == "legit":
+                return "This message appears to be legitimate. Keep in mind to never share your credentials."
+            return "This message looks like a scam. Do not click links or share OTPs or PINs."
         
-        if not detected_tactics_list:
+        if label == "legit":
             return templates.get(
                 "legit_explanation", 
                 "This message appears to be legitimate. Keep in mind to never share your credentials."
+            )
+        if not detected_tactics_list:
+            return (
+                "This message was classified as a scam, but no single manipulation tactic "
+                "passed its threshold. Treat it as suspicious: do not click links or share "
+                "an OTP, UPI PIN or password."
             )
         header = templates.get("scam_header", "This message exhibits scam tactics:").replace("{COUNT}", str(len(detected_tactics_list)))
         bullets = []
@@ -139,45 +156,26 @@ class ScamShieldInference:
         language_guess = detection["language_guess"]
         script_type = detection["script_type"]
         detected_script = detection["detected_script"]
-        # Ensure models are loaded, fallback if not
-        if self.binary_model is None or self.word_vec is None or self.char_vec is None:
-            return {
-                "message_id": message_id,
-                "scam_probability": 0.0,
-                "label": "legit",
-                "language_detected": language_guess,
-                "script_type": script_type,
-                "detected_script": detected_script,
-                "tactics": [],
-                "explanation": "Models are not trained. Please train the models first."
-            }
-        # 2. Extract Features
-        X_word = self.word_vec.transform([text])
-        X_char = self.char_vec.transform([text])
-        X = hstack([X_word, X_char])
-        # 3. Model A: Scam Probability
-        scam_prob = float(self.binary_model.predict_proba(X)[0, 1])
-        label = "scam" if scam_prob >= 0.5 else "legit"
-        # 4. Model B: Tactic Classification
-        detected_tactics = []
         
-        # Only extract tactics if we flag it as a scam, to prevent false positive tactic lists
+        # 2. Score with the production predictor (ONNX encoder or TF-IDF baseline)
+        prediction = self.predictor.predict([text])[0]
+        scam_prob = float(prediction.scam_probability)
+        label = "scam" if scam_prob >= 0.5 else "legit"
+        
+        # 3. Tactics from the same model, with verbatim evidence spans
+        detected_tactics = []
         if label == "scam":
-            for tactic in TACTICS:
-                if tactic in self.tactic_models:
-                    t_model = self.tactic_models[tactic]
-                    t_prob = float(t_model.predict_proba(X)[0, 1])
-                    if t_prob >= 0.5:
-                        evidence = self.extract_evidence(text, tactic)
-                        detected_tactics.append({
-                            "tactic": tactic,
-                            "confidence": round(t_prob, 2),
-                            "evidence": evidence
-                        })
-                        
-        # 5. Build Explanation
-        explanation = self.build_explanation(detected_tactics)
-        # 6. Log to SQLite
+            for tactic_prediction in prediction.tactics:
+                evidence = self.evidence_for(text, tactic_prediction.tactic)
+                detected_tactics.append({
+                    "tactic": tactic_prediction.tactic,
+                    "confidence": round(tactic_prediction.probability, 2),
+                    "evidence": evidence
+                })
+        
+        # 4. Build Explanation
+        explanation = self.build_explanation(detected_tactics, label)
+        # 5. Log to SQLite
         tactic_ids = [dt["tactic"] for dt in detected_tactics]
         log_prediction(
             message_id, 
@@ -196,8 +194,21 @@ class ScamShieldInference:
             "script_type": script_type,
             "detected_script": detected_script,
             "tactics": detected_tactics,
-            "explanation": explanation
+            "explanation": explanation,
+            "model": getattr(self.predictor, "name", "unknown")
         }
+    
+    def evidence_for(self, text: str, tactic: str) -> str:
+        """A verbatim span of the message that supports the tactic, or generic phrasing.
+        
+        The TF-IDF baseline can attribute a span from its coefficients. The neural
+        predictor cannot (it has no per-token weights), so it returns generic phrasing
+        rather than inventing a quote - see docs/robustness.md on why quoting text the
+        sender did not write is unacceptable.
+        """
+        if hasattr(self.predictor, "evidence"):
+            return self.predictor.evidence(text, tactic)
+        return "suspicious phrasing"
 if __name__ == "__main__":
     analyzer = ScamShieldInference()
     

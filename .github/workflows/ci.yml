@@ -22,6 +22,13 @@ jobs:
         run: pip install -r requirements-dev.txt
       - name: Unit tests
         run: python -m pytest tests/ -q
+      - name: Type check
+        run: |
+          pip install -q mypy types-requests
+          python -m mypy --explicit-package-bases --namespace-packages \
+            src/models/base.py src/models/tfidf.py src/models/onnx_infer.py \
+            src/models/transformer_infer.py src/data.py src/taxonomy.py \
+            src/detector.py src/model_registry.py src/models/llm_prompted.py
 
   data-pipeline:
     runs-on: ubuntu-latest

@@ -44,3 +44,4 @@ data/test_candidates/labels.jsonl
 # README quotes are committed (results/*.md).
 results/*.json
 results/*.jsonl
+.playwright-mcp/

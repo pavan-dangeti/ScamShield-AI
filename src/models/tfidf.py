@@ -50,6 +50,7 @@ class TfidfScamModel:
         self.char_vectorizer.fit(texts)
 
     def _features(self, texts: list[str]):
+        assert self.word_vectorizer is not None and self.char_vectorizer is not None, "model is not fitted"
         return hstack(
             [self.word_vectorizer.transform(texts), self.char_vectorizer.transform(texts)]
         )
@@ -100,6 +101,7 @@ class TfidfScamModel:
         return self
 
     def predict_binary(self, texts: list[str]) -> np.ndarray:
+        assert self.binary_model is not None, "model is not fitted"
         return self.binary_model.predict_proba(self._features(list(texts)))[:, 1]
 
     def _tactic_spans(self, text: str, tactic: str) -> str:
@@ -113,6 +115,7 @@ class TfidfScamModel:
         explanation must never cite text the sender did not write.
         """
         model = self.tactic_models[tactic]
+        assert self.word_vectorizer is not None and self.char_vectorizer is not None, "model is not fitted"
         coefficients = model.coef_[0]
         word_size = len(self.word_vectorizer.vocabulary_)
         word_scores = self.word_vectorizer.transform([text]).multiply(coefficients[:word_size]).toarray().ravel()
