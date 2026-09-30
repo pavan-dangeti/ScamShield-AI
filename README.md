@@ -248,12 +248,17 @@ python -m scripts.make_test_candidates    # unlabelled, real-only candidates
 python -m scripts.import_user_messages --input my_messages.csv   # add your own real messages
 ```
 
-Label with `docs/labeling/labeler.html` (opens in a browser, works offline), export
-`labels.jsonl`, then freeze the set:
+Label with the keyboard-driven tool, which shows messages blind (shuffled order, no
+source, no hint label), autosaves, and ends with a blind re-check of ~10% of items:
 
 ```bash
-python -m scripts.freeze_test             # -> data/processed/test.jsonl + docs/test_set.md
+python -m http.server 8000                # then open http://localhost:8000/docs/labeling/labeler.html
+python -m scripts.freeze_test --labels data/test_candidates/labels.jsonl   # -> data/processed/test.jsonl + docs/test_set.md
 ```
+
+`freeze_test` reports label quality in `docs/test_set.md`: self-agreement (Cohen's kappa
+against the blind re-check) and agreement with the original UCI annotation, with every
+disagreement listed for audit.
 
 > **Honest limitation:** the only licence-clean, real, labelled scam corpus available for this
 > task is the UCI SMS Spam Collection, which is **English**. For Hindi, Tamil, Telugu and

@@ -4,7 +4,8 @@ These rules decide every label in the hand-verified test set.  They are also
 what the owner applies when adding their own messages, and what a future second
 labeller would apply, so that the test set means the same thing to everyone.
 
-Tool: `docs/labeling/labeler.html` (keyboard driven, works offline).
+Tool: `docs/labeling/labeler.html` (keyboard driven; serve the repo with
+`python -m http.server` and it loads the candidate pool itself).
 Guidelines version: **v1**.
 
 ---
@@ -112,12 +113,24 @@ and asks for credentials, it is `scam`.
    emails, UPI handles and link query strings automatically.
 5. Tactic labels are multi-select. Zero tactics on a scam is an error; the
    freezing script rejects it.
-6. A second pass over skipped and uncertain rows is expected. Report the number
-   of disagreements between passes as a self-check.
+6. Mark a row **unsure** (`F`) rather than guessing. After the pass, work through
+   *Review flagged* (skipped and unsure rows) once more.
+7. The tool shuffles the order and hides the source. Do not look the message up
+   in the source file while labelling.
 
-## 6. Inter-rater agreement
+## 6. Measuring label quality
 
-If a second person labels the same 10% of rows, report Cohen's kappa on the
-scam/legit decision and the Jaccard overlap per tactic in `docs/test_set.md`.
-With one labeller, that check is not available and the test set is documented
-as single-rater.
+`python -m scripts.freeze_test` writes both measures to `docs/test_set.md`:
+
+* **Self-agreement.** After the pass, ~10% of labelled rows (chosen by a fixed
+  hash, so the sample does not depend on the labeller) come back in *Blind
+  re-check* without the earlier answer. Report Cohen's kappa on scam/legit and
+  the mean tactic Jaccard on rows both passes called scam. Kappa below 0.8
+  means the guidelines are ambiguous somewhere; find the rows and fix the
+  guideline before freezing.
+* **Agreement with an independent annotator.** UCI rows carry the collection's
+  original spam/ham label, which the tool never shows. Kappa against it and the
+  full list of disagreements are reported. UCI counts unsolicited marketing as
+  spam and this guideline does not, so disagreement is expected there; every
+  other disagreement is a row to re-read.
+* If a second person labels the same 10% of rows, report their kappa the same way.

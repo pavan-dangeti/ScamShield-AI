@@ -11,6 +11,14 @@ Soft requirement: ``--min-per-cell`` (default 25) per cell and class.  Cells
 below the target are reported as a gap in ``docs/test_set.md`` rather than
 silently accepted.
 
+Label quality is measured, not assumed.  ``docs/test_set.md`` reports:
+  * self-agreement - Cohen's kappa between the labelling pass and the blind
+    re-check the tool runs on ~10% of items;
+  * agreement with an independent annotator - the original UCI spam/ham label,
+    which the labelling tool never shows, with every disagreement listed so
+    the set can be audited.  UCI counts marketing as spam while the guidelines
+    call it legitimate, so disagreement there is expected and informative.
+
 After freezing, re-run ``python -m scripts.build_dataset``; the build excludes
 every training row that is a near-duplicate of a frozen test message.
 
@@ -27,7 +35,10 @@ import os
 from collections import Counter, defaultdict
 from datetime import date
 
-from scripts.build_dataset import PROCESSED_DIR, TEST_PATH, normalize_text
+import numpy as np
+from sklearn.metrics import cohen_kappa_score
+
+from scripts.build_dataset import PROCESSED_DIR, TEST_PATH, load_uci, normalize_text
 from scripts.make_test_candidates import CANDIDATES
 from src.taxonomy import TACTICS
 
@@ -50,7 +61,10 @@ def main() -> None:
         for line in open(CANDIDATES, encoding="utf-8")
         if line.strip()
     }
-    exported = [json.loads(line) for line in open(args.labels, encoding="utf-8") if line.strip()]
+    rows = [json.loads(line) for line in open(args.labels, encoding="utf-8") if line.strip()]
+    # Exports without a ``pass`` field predate the blind re-check; treat them as the main pass.
+    exported = [row for row in rows if row.get("pass", "primary") == "primary"]
+    recheck = [row for row in rows if row.get("pass") == "recheck"]
 
     kept: list[dict] = []
     problems: list[str] = []
@@ -91,8 +105,10 @@ def main() -> None:
                 "provenance": "real",
                 "synthetic": False,
                 "split": "test",
-                "labelled_by": item.get("labelled_by", "owner"),
+                "labelled_by": item.get("annotator") or item.get("labelled_by", "owner"),
                 "labelled_at": item.get("labelled_at", date.today().isoformat()),
+                "confidence": item.get("confidence", "sure"),
+                "guidelines_version": item.get("guidelines_version", "v1"),
             }
         )
 
@@ -133,6 +149,7 @@ def main() -> None:
         lines.append(
             f"| {language} | {script} | {group.get('legit', 0)} | {group.get('scam', 0)} |"
         )
+    lines += ["", *label_quality(kept, exported, recheck)]
     lines += ["", "## Gaps", ""]
     lines += [f"- {problem}" for problem in problems] or ["- none"]
     lines += ["", "## Sources", ""]
@@ -144,6 +161,74 @@ def main() -> None:
     print(f"Froze {len(kept)} rows -> {TEST_PATH} and {TEST_SET_DOC}")
     for problem in problems:
         print(f"  note: {problem}")
+
+
+def _kappa(pairs: list[tuple[str, str]]) -> str:
+    if len({label for pair in pairs for label in pair}) < 2:
+        return "n/a (one class only)"
+    first, second = zip(*pairs)
+    return f"{cohen_kappa_score(first, second):.3f}"
+
+
+def _cell_text(text: str, limit: int = 100) -> str:
+    text = " ".join(text.split()).replace("|", "\\|")
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def label_quality(kept: list[dict], primary: list[dict], recheck: list[dict]) -> list[str]:
+    """Self-agreement, agreement with the source's own annotation, and effort."""
+    lines = ["## Label quality", ""]
+    unsure = sum(row["confidence"] == "unsure" for row in kept)
+    skipped = Counter(row.get("skip_reason") or "unspecified" for row in primary if row.get("skipped"))
+    seconds = [row["seconds"] for row in primary if isinstance(row.get("seconds"), (int, float))]
+    lines.append(f"- Kept rows marked unsure by the labeller: {unsure} of {len(kept)}")
+    lines.append(
+        "- Skipped: " + (", ".join(f"{reason} {count}" for reason, count in skipped.most_common()) or "none")
+    )
+    if seconds:
+        lines.append(f"- Median time per item: {float(np.median(seconds)):.1f} s over {len(seconds)} items")
+
+    first = {row["id"]: row for row in primary if row.get("label") in ("scam", "legit")}
+    pairs = [
+        (first[row["id"]]["label"], row["label"])
+        for row in recheck
+        if row["id"] in first and row.get("label") in ("scam", "legit")
+    ]
+    lines += ["", "### Self-agreement (blind re-check)", ""]
+    if pairs:
+        same = sum(a == b for a, b in pairs)
+        jaccard = [
+            len(set(first[row["id"]]["tactics"]) & set(row["tactics"]))
+            / max(1, len(set(first[row["id"]]["tactics"]) | set(row["tactics"])))
+            for row in recheck
+            if row["id"] in first and first[row["id"]]["label"] == row.get("label") == "scam"
+        ]
+        lines.append(f"- Re-checked items: {len(pairs)}; same decision: {same} ({same / len(pairs):.1%})")
+        lines.append(f"- Cohen's kappa, scam/legit: {_kappa(pairs)}")
+        if jaccard:
+            lines.append(f"- Mean tactic Jaccard on agreed scams: {float(np.mean(jaccard)):.3f} ({len(jaccard)} items)")
+    else:
+        lines.append("- No blind re-check in this export; self-agreement not measured.")
+
+    lines += ["", "### Agreement with the original UCI annotation", ""]
+    try:
+        reference = {f"test-{row.id}": row.label for row in load_uci().itertuples()}
+    except FileNotFoundError:
+        return lines + ["- UCI source not downloaded (`python -m scripts.download_data`); not measured."]
+    compared = [row for row in kept if row["id"] in reference]
+    if not compared:
+        return lines + ["- No UCI rows in the test set."]
+    pairs = [(row["label"], reference[row["id"]]) for row in compared]
+    disagree = [row for row in compared if row["label"] != reference[row["id"]]]
+    lines.append(f"- Compared rows: {len(compared)}; disagreements: {len(disagree)}")
+    lines.append(f"- Cohen's kappa, labeller vs UCI: {_kappa(pairs)}")
+    lines.append("- The labeller's decision stands: UCI labels unsolicited marketing as spam, which")
+    lines.append("  `docs/labeling_guidelines.md` labels legitimate. Each disagreement is listed for audit.")
+    if disagree:
+        lines += ["", "| id | labeller | UCI | message |", "|---|---|---|---|"]
+        for row in disagree:
+            lines.append(f"| {row['id']} | {row['label']} | {reference[row['id']]} | {_cell_text(row['text'])} |")
+    return lines
 
 
 def _by_cell(rows: list[dict]) -> dict:
