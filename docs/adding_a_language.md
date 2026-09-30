@@ -98,7 +98,7 @@ If the language uses a script not already supported by the detector, register it
 Once the language pack is created and registered, run the automation commands from the project root:
 1. **Regenerate the CSV Dataset**:
    ```bash
-   python src/dataset_generator.py
+   python scripts/dataset_generator.py
    ```
    The generator will automatically pick up the new JSON pack, load its templates, fill in placeholders, and output an expanded training set to `data/scam_dataset.csv`.
 2. **Retrain Classifiers & Re-evaluate**:

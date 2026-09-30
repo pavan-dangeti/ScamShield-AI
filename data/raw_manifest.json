@@ -1,0 +1,44 @@
+{
+  "bengali_sms_smishing": {
+    "downloaded_at": "2026-09-29T11:26:36.048949+00:00",
+    "files": {
+      "test-00000-of-00001.parquet": {
+        "sha256": "2719d61aaf82b4b38e256e7e0d5ecee4a19588a7f522b863c713a435d0dffa31"
+      },
+      "train-00000-of-00001.parquet": {
+        "sha256": "9fb92ea7e185297f4dd66442a7ed5f11ffc82d501c1ca2ea38385f430b9fe18e"
+      },
+      "validation-00000-of-00001.parquet": {
+        "sha256": "a6a652087bbc328618cc39720a3ec66be53e106d9184dcf83791bc4da705a1fc"
+      }
+    },
+    "homepage": "https://huggingface.co/datasets/shariul-islam/bengali-sms-smishing-dataset",
+    "licence": "MIT",
+    "provenance": "unverified",
+    "url": "https://huggingface.co/datasets/shariul-islam/bengali-sms-smishing-dataset/resolve/main/data/{split}-00000-of-00001.parquet"
+  },
+  "indian_scam_sms_synthetic": {
+    "downloaded_at": "2026-09-29T11:26:31.214544+00:00",
+    "files": {
+      "synthetic_audited.csv": {
+        "sha256": "45bde5f156a1a42698bab209e32bcd41b3639013d772f644cc3208ed39fb61e2"
+      }
+    },
+    "homepage": "https://huggingface.co/datasets/Ridham115/indian-scam-sms-synthetic-audited",
+    "licence": "CC-BY-4.0",
+    "provenance": "synthetic",
+    "url": "https://huggingface.co/datasets/Ridham115/indian-scam-sms-synthetic-audited/resolve/main/data/synthetic_audited.csv"
+  },
+  "uci_sms_spam": {
+    "downloaded_at": "2026-09-29T11:26:30.765879+00:00",
+    "files": {
+      "SMSSpamCollection": {
+        "sha256": "7d039a24a6083ed9ef0f806ebad56bbb976e3aeb8de05669173bfdc4996c239d"
+      }
+    },
+    "homepage": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+    "licence": "CC-BY-4.0",
+    "provenance": "real",
+    "url": "https://archive.ics.uci.edu/static/public/228/sms+spam+collection.zip"
+  }
+}

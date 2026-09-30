@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ScamShield test-set labeller</title>
+<style>
+  :root { color-scheme: dark; --bg:#10131a; --panel:#181c26; --line:#2a3040; --text:#e8ecf4; --muted:#98a2b8; --ok:#3ddc84; --bad:#ff6b6b; --warn:#ffc857; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:18px 24px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
+  h1 { font-size:18px; margin:0; font-weight:600; }
+  .muted { color:var(--muted); font-size:14px; }
+  main { display:grid; grid-template-columns: minmax(0,1fr) 320px; gap:24px; padding:24px; align-items:start; }
+  @media (max-width: 900px) { main { grid-template-columns:1fr; } }
+  .msg { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:22px; min-height:180px; }
+  .msg .cell { font-size:13px; color:var(--muted); margin-bottom:14px; }
+  .msg .text { font-size:22px; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+  .keys { margin-top:18px; display:flex; flex-wrap:wrap; gap:8px; font-size:14px; color:var(--muted); }
+  kbd { background:#0d1017; border:1px solid var(--line); border-bottom-width:2px; border-radius:6px; padding:2px 7px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--text); }
+  .tactics { margin-top:18px; display:none; }
+  .tactics.show { display:block; }
+  .tactics button { background:#0d1017; border:1px solid var(--line); color:var(--text); border-radius:999px; padding:8px 14px; margin:0 6px 8px 0; cursor:pointer; font-size:14px; }
+  .tactics button.on { background:#1d3557; border-color:#3a6ea5; }
+  aside { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; }
+  aside h2 { font-size:14px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 10px; }
+  .bar { height:10px; background:#0d1017; border-radius:999px; overflow:hidden; margin:8px 0 4px; }
+  .bar > span { display:block; height:100%; background:var(--ok); }
+  button.action { width:100%; margin-top:8px; padding:10px; border-radius:8px; border:1px solid var(--line); background:#0d1017; color:var(--text); cursor:pointer; font-size:14px; }
+  textarea { width:100%; min-height:90px; background:#0d1017; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; }
+  select, input[type=text] { background:#0d1017; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px; font:inherit; }
+  .row { display:flex; gap:8px; margin-top:8px; }
+  .row > * { flex:1; }
+  .note { color:var(--warn); font-size:13px; margin-top:8px; }
+  .done { color:var(--ok); }
+</style>
+</head>
+<body>
+<header>
+  <h1>ScamShield test-set labeller</h1>
+  <span class="muted">Load <code>data/test_candidates/candidates.jsonl</code>, label every message, then press <b>Export</b>.</span>
+</header>
+<main>
+  <section>
+    <div class="msg">
+      <div class="cell" id="cell">&nbsp;</div>
+      <div class="text" id="text">Choose <em>Load candidates</em> to begin.</div>
+      <div class="tactics" id="tactics"></div>
+    </div>
+    <div class="keys">
+      <span><kbd>1</kbd> legitimate</span>
+      <span><kbd>2</kbd> scam</span>
+      <span><kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd><kbd>V</kbd><kbd>B</kbd><kbd>N</kbd> toggle tactic (scam only)</span>
+      <span><kbd>Enter</kbd> save &amp; next</span>
+      <span><kbd>U</kbd> undo</span>
+      <span><kbd>S</kbd> skip</span>
+      <span><kbd>←</kbd><kbd>→</kbd> navigate</span>
+    </div>
+  </section>
+  <aside>
+    <h2>Progress</h2>
+    <div class="bar"><span id="bar" style="width:0%"></span></div>
+    <div class="muted" id="count">0 / 0 labelled</div>
+    <h2 style="margin-top:18px">Data</h2>
+    <input type="file" id="file" accept=".jsonl,application/json" />
+    <button class="action" id="loadBtn">Load candidates</button>
+    <button class="action" id="exportBtn">Export labels (.jsonl)</button>
+    <div class="note" id="note"></div>
+    <h2 style="margin-top:18px">Add your own message</h2>
+    <textarea id="own" placeholder="Paste a real message you received (remove names and your own number)"></textarea>
+    <div class="row">
+      <select id="ownLang">
+        <option value="english">english</option><option value="hindi">hindi</option>
+        <option value="tamil">tamil</option><option value="telugu">telugu</option>
+        <option value="bengali">bengali</option>
+      </select>
+      <select id="ownScript">
+        <option value="native">native</option><option value="romanized">romanized</option><option value="latin">latin</option>
+      </select>
+    </div>
+    <button class="action" id="ownBtn">Add to queue</button>
+  </aside>
+</main>
+<script>
+const TACTICS = ["urgency","authority_impersonation","false_reward","loss_aversion","credential_phishing","suspicious_link"];
+const KEYS = ["z","x","c","v","b","n"];
+let queue = [], index = 0, labels = {}, history = [];
+const store = { load: () => JSON.parse(localStorage.getItem("ss_labels") || "{}") };
+
+function save() { localStorage.setItem("ss_labels", JSON.stringify(labels)); }
+
+function render() {
+  const item = queue[index];
+  const text = document.getElementById("text"), cell = document.getElementById("cell");
+  if (!item) { text.textContent = "All done. Export your labels."; cell.innerHTML = "&nbsp;"; return; }
+  const existing = labels[item.id] || {};
+  cell.textContent = `${item.language} / ${item.script}  ·  ${index + 1} of ${queue.length}  ·  source: ${item.source}`;
+  text.textContent = item.text;
+  const box = document.getElementById("tactics");
+  box.classList.toggle("show", existing.label === "scam" || document.body.dataset.pending === "scam");
+  box.innerHTML = TACTICS.map((t, i) => {
+    const on = (existing.tactics || []).includes(t);
+    return `<button data-tactic="${t}" class="${on ? "on" : ""}">${KEYS[i].toUpperCase()} · ${t.replace(/_/g, " ")}</button>`;
+  }).join("");
+  const done = Object.keys(labels).length;
+  document.getElementById("count").textContent = `${done} / ${queue.length} labelled`;
+  document.getElementById("bar").style.width = queue.length ? (100 * done / queue.length) + "%" : "0%";
+  document.body.dataset.pending = "";
+}
+
+function commit(label, tactics = []) {
+  const item = queue[index];
+  if (!item) return;
+  if (label === "scam" && tactics.length === 0) {
+    document.body.dataset.pending = "scam";
+    render();
+    document.getElementById("note").textContent = "Pick at least one tactic for a scam message.";
+    return;
+  }
+  history.push(index);
+  labels[item.id] = {
+    id: item.id, text: item.text, language: item.language, script: item.script,
+    label, tactics: label === "scam" ? tactics : [],
+    labelled_by: "owner", labelled_at: new Date().toISOString().slice(0, 10),
+  };
+  document.getElementById("note").textContent = "";
+  save();
+  if (index < queue.length - 1) { index += 1; }
+  render();
+}
+
+function undo() {
+  if (!history.length) return;
+  const previous = history.pop();
+  delete labels[queue[previous].id];
+  save();
+  index = previous;
+  render();
+}
+
+function loadCandidates(rows) {
+  queue = rows;
+  labels = store.load();
+  for (const row of queue) { if (labels[row.id]) labels[row.id] = labels[row.id]; }
+  index = 0;
+  while (index < queue.length - 1 && labels[queue[index].id]) index += 1;
+  render();
+}
+
+document.getElementById("loadBtn").onclick = () => {
+  const file = document.getElementById("file").files[0];
+  if (!file) { document.getElementById("note").textContent = "Pick a file first."; return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const rows = reader.result.split("\n").filter(Boolean).map(line => JSON.parse(line));
+    loadCandidates(rows);
+    document.getElementById("note").textContent = `Loaded ${rows.length} candidates.`;
+  };
+  reader.readAsText(file);
+};
+
+document.getElementById("exportBtn").onclick = () => {
+  const blob = new Blob([Object.values(labels).map(r => JSON.stringify(r)).join("\n") + "\n"],
+                        { type: "application/jsonl" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "labels.jsonl";
+  link.click();
+};
+
+document.getElementById("ownBtn").onclick = () => {
+  const text = document.getElementById("own").value.trim();
+  if (text.length < 10) { document.getElementById("note").textContent = "Message too short."; return; }
+  const row = { id: "own-" + Date.now(), text, language: document.getElementById("ownLang").value,
+                script: document.getElementById("ownScript").value, source: "user_contributed" };
+  queue.push(row); index = queue.length - 1;
+  document.getElementById("own").value = "";
+  render();
+};
+
+document.getElementById("tactics").onclick = event => {
+  const tactic = event.target.dataset.tactic;
+  if (!tactic) return;
+  const item = queue[index];
+  const existing = labels[item.id] || { tactics: [] };
+  const tactics = new Set(existing.tactics || []);
+  tactics.has(tactic) ? tactics.delete(tactic) : tactics.add(tactic);
+  if (existing.label === "scam") { existing.tactics = [...tactics]; save(); }
+  else { document.body.dataset.pending = "scam"; window.__pending = [...tactics]; }
+  render();
+};
+
+document.addEventListener("keydown", event => {
+  if (event.target.tagName === "TEXTAREA" || event.target.tagName === "INPUT" || event.target.tagName === "SELECT") return;
+  const item = queue[index];
+  if (!item) return;
+  const key = event.key.toLowerCase();
+  if (key === "arrowright") { index = Math.min(queue.length - 1, index + 1); render(); return; }
+  if (key === "arrowleft") { index = Math.max(0, index - 1); render(); return; }
+  if (key === "u") { undo(); return; }
+  if (key === "s") { delete labels[item.id]; save(); index = Math.min(queue.length - 1, index + 1); render(); return; }
+  if (key === "enter") {
+    const existing = labels[queue[index - 1]] || {};
+    const pending = window.__pending || [];
+    if (existing.label) commit(existing.label, existing.tactics || []);
+    else if (pending.length) commit("scam", pending);
+    else if (window.__pendingLabel) commit(window.__pendingLabel, []);
+    return;
+  }
+  if (key === "1") { window.__pendingLabel = "legit"; window.__pending = []; commit("legit", []); return; }
+  if (key === "2") { window.__pendingLabel = "scam"; document.body.dataset.pending = "scam";
+                     document.getElementById("note").textContent = "Pick tactics with Z X C V B N, then Enter."; return; }
+  const tacticIndex = KEYS.indexOf(key);
+  if (tacticIndex >= 0) {
+    const tactic = TACTICS[tacticIndex];
+    const pending = new Set(window.__pending || []);
+    pending.has(tactic) ? pending.delete(tactic) : pending.add(tactic);
+    window.__pending = [...pending];
+    window.__pendingLabel = "scam";
+    document.body.dataset.pending = "scam";
+    render();
+  }
+});
+render();
+</script>
+</body>
+</html>

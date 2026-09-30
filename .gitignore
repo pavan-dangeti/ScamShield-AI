@@ -17,9 +17,25 @@ __pycache__/
 # macOS
 .DS_Store
 
+# Serena agent tooling
+.serena/
+
 # Logs
 *.log
 
 # Build
 dist/
 build/
+
+# Legacy pipeline artefacts (rebuilt by scripts/dataset_generator.py and src.train)
+models/
+data/scam_dataset.csv
+
+# Data pipeline: raw downloads and build artifacts are rebuilt by scripts.
+# The frozen test set is force-added when it exists.
+data/raw/
+data/processed/
+
+# Owner-supplied messages and in-progress labels stay local by default.
+data/test_candidates/user_messages.jsonl
+data/test_candidates/labels.jsonl

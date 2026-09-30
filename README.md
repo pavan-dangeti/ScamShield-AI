@@ -85,14 +85,70 @@ Adding a new language requires **zero code changes** — just a new JSON languag
 
 ---
 
+## 🗂️ Data and the hand-verified test set
+
+ScamShield separates three things that are easy to confuse:
+
+- **Training data** — licence-checked corpora, template packs, and (training-only) LLM-written
+  synthetic messages. Sources, licences and provenance: [`docs/data_sources.md`](docs/data_sources.md).
+- **The hand-verified test set** — **real** messages only, labelled by a human against
+  [`docs/labeling_guidelines.md`](docs/labeling_guidelines.md), never used for training or
+  threshold tuning. Composition and gaps: `docs/test_set.md`.
+- **Synthetic data** — LLM-generated, always marked, and **never** allowed in the test set.
+
+Build the corpus and prove it is clean:
+
+```bash
+python -m scripts.download_data        # fetch sources, SHA-256 pinned
+python -m scripts.build_dataset           # PII scrub, dedup, near-dup-aware train/val split
+python -m scripts.check_leakage           # no message appears (even near-duplicated) across splits
+```
+
+Prepare the test candidate pool, and help fill the languages that have no public corpus:
+
+```bash
+python -m scripts.make_test_candidates    # unlabelled, real-only candidates
+python -m scripts.import_user_messages --input my_messages.csv   # add your own real messages
+```
+
+Label with `docs/labeling/labeler.html` (opens in a browser, works offline), export
+`labels.jsonl`, then freeze the set:
+
+```bash
+python -m scripts.freeze_test             # -> data/processed/test.jsonl + docs/test_set.md
+```
+
+> **Honest limitation:** the only licence-clean, real, labelled scam corpus available for this
+> task is the UCI SMS Spam Collection, which is **English**. For Hindi, Tamil, Telugu and
+> Bengali there is no public real corpus, so those test cells are filled from messages the
+> owner supplies. This gap is documented rather than papered over with synthetic data.
+
+---
+
 ## 📊 Evaluation
 
-Full per-language, per-script precision/recall/F1 breakdown is generated automatically and saved to [`models/metrics_report.md`](models/metrics_report.md) on every training run.
+The current production model (TF-IDF + logistic regression) is trained and evaluated on the
+template-generated corpus described in [`docs/data_sources.md`](docs/data_sources.md). Its
+metrics are written to `models/metrics_report.md` on every `python -m src.train` run, with a
+per-language and per-script breakdown and low-support warnings.
 
-Key findings:
-- Aggregate metrics can be misleading on a small, imbalanced multilingual dataset — the report explicitly flags low-support (language, script) combinations as **"insufficient data"** rather than reporting potentially perfect-but-meaningless scores.
-- Performance on **romanized/code-mixed text** is consistently lower than on native scripts or pure English — this mirrors a real, documented gap in commercial NLP systems and is the core motivation for this project.
-- The model was evaluated on a held-out set including real-world scam message formats not present in the training templates, to test generalization beyond synthetic patterns.
+**Know what the numbers mean.** The legacy corpus expands a small set of hand-written
+templates with random placeholders, and the model is evaluated on held-out samples drawn from
+those same templates. That measures template memorisation, not real-world accuracy — which is
+exactly why the project now separates a licence-checked corpus and a hand-verified test set
+from the training data.
+
+The reproducible data pipeline is the source of truth for evaluation going forward:
+
+```bash
+python -m scripts.download_data      # fetch licence-checked sources, pinned by SHA-256
+python -m scripts.build_dataset         # scrub, dedup, near-dup-aware split -> data/processed/
+python -m scripts.check_leakage         # prove no message leaks across splits
+```
+
+Every figure quoted in this README comes from a script in this repository, with the exact
+command shown next to it. See [`docs/data_card.md`](docs/data_card.md) for what is in the
+corpus, what is real vs. synthetic vs. unverified, and the known biases.
 
 ---
 
@@ -114,11 +170,17 @@ cp .env.example .env
 ### Generate the dataset and train the models
 
 ```bash
-python -m src.dataset_generator
+python scripts/dataset_generator.py
 python -m src.train
 ```
 
 This produces `data/scam_dataset.csv`, the trained model artifacts in `models/`, and `models/metrics_report.md`.
+
+> This is the original template-based pipeline, kept so the current production model still
+> trains. The licence-checked corpus and its hand-verified test set are built separately —
+> see [`docs/data_sources.md`](docs/data_sources.md) and
+> [`docs/data_card.md`](docs/data_card.md) for `python -m scripts.download_data`,
+> `python -m scripts.build_dataset` and `python -m scripts.check_leakage`.
 
 ### Run the server
 
@@ -159,8 +221,16 @@ curl -X POST http://127.0.0.1:8000/api/analyze \
 scamshield/
 ├── data/
 │   ├── language_packs/        # Per-language scam/legit templates (extensible)
-│   └── scam_dataset.csv        # Generated training dataset
+│   ├── raw/                   # downloaded sources (not committed, re-fetched by script)
+│   ├── processed/             # built train/val (+ frozen test) splits (not committed)
+│   ├── synthetic/             # locally generated, training-only messages
+│   ├── test_candidates/       # unlabelled pool for the hand-verified test set
+│   └── scam_dataset.csv       # legacy template dataset (kept for the current model)
 ├── docs/
+│   ├── data_sources.md        # every source: licence, provenance, eligibility
+│   ├── data_card.md           # corpus composition, biases, limitations
+│   ├── labeling_guidelines.md # scam vs legit rules + per-tactic definitions
+│   ├── labeling/labeler.html  # keyboard-driven test-set labelling tool
 │   ├── adding_a_language.md
 │   └── twilio_setup.md
 ├── models/
@@ -168,13 +238,24 @@ scamshield/
 │   ├── tactic_classifier.pkl
 │   ├── vectorizers.pkl
 │   └── metrics_report.md
+├── scripts/
+│   ├── download_data.py       # fetch licence-checked sources (SHA-256 pinned)
+│   ├── build_dataset.py       # scrub, dedup, near-dup-aware train/val split
+│   ├── check_leakage.py       # prove no leakage across splits
+│   ├── generate_synthetic.py  # LLM-written training data (training only)
+│   ├── make_test_candidates.py# assemble the unlabelled test candidate pool
+│   ├── import_user_messages.py# import owner-contributed real messages
+│   ├── freeze_test.py         # freeze hand-verified test set + write docs/test_set.md
+│   ├── scrub_pii.py           # PII scrubbing
+│   └── dataset_generator.py   # legacy template expansion
 ├── src/
 │   ├── detector.py             # Script/language detection
-│   ├── dataset_generator.py    # Multilingual dataset generation
 │   ├── train.py                # Training + evaluation
 │   ├── inference.py            # Prediction + explanation logic
+│   ├── taxonomy.py             # manipulation-tactic taxonomy (single source of truth)
 │   ├── database.py             # SQLite logging
 │   └── main.py                 # FastAPI app
+├── tests/                      # data-pipeline + integration tests
 └── static/                     # Web dashboard (HTML/CSS/JS)
 ```
 

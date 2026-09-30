@@ -7,15 +7,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_recall_fscore_support, hamming_loss
 from scipy.sparse import hstack
-# Define tactic taxonomy
-TACTICS = [
-    "urgency",
-    "authority_impersonation",
-    "false_reward",
-    "loss_aversion",
-    "credential_phishing",
-    "suspicious_link"
-]
+from src.taxonomy import TACTICS
+
 def load_data(filepath: str):
     df = pd.read_csv(filepath)
     # Fill empty tactics with empty string
