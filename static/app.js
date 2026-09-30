@@ -186,8 +186,8 @@ function renderResults(originalText, data) {
                 <div class="tactic-name-area">
                     <svg class="tactic-bullet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                     <div>
-                        <div class="tactic-name">${tacticTitle}</div>
-                        <div class="tactic-trigger">Evidence: "${t.evidence}"</div>
+                        <div class="tactic-name">${escapeHtml(tacticTitle)}</div>
+                        <div class="tactic-trigger">Evidence: "${escapeHtml(t.evidence)}"</div>
                     </div>
                 </div>
                 <div class="tactic-confidence">Conf: ${Math.round(t.confidence * 100)}%</div>
@@ -199,7 +199,10 @@ function renderResults(originalText, data) {
     }
     
     // Highlight Evidence in the Original Text Area and Set Explanation
-    let highlightedText = originalText;
+    // NOTE: the message text and the evidence spans come from the sender, so they are
+    // HTML-escaped before any markup is added. Escaping first means the <mark> tags
+    // below are the only markup in the output and nothing a sender wrote can execute.
+    let highlightedText = escapeHtml(originalText);
     if (isScam && data.tactics) {
         // Find evidence phrases and wrap them with <mark>
         // Sort evidence by length descending to avoid nested replacement issues
@@ -208,8 +211,9 @@ function renderResults(originalText, data) {
             .sort((a, b) => b.length - a.length);
         uniqueEvidence.forEach(ev => {
             try {
-                // Case-insensitive regex highlighting match
-                const regex = new RegExp(`\\b(${escapeRegExp(ev)})\\b`, 'gi');
+                // Case-insensitive regex highlighting match against the escaped text
+                const escaped = escapeHtml(ev);
+                const regex = new RegExp(`(${escapeRegExp(escaped)})`, 'gi');
                 highlightedText = highlightedText.replace(regex, "<mark>$1</mark>");
             } catch (e) {
                 console.error("Regex highlight error: ", e);
@@ -222,7 +226,7 @@ function renderResults(originalText, data) {
     expBox.innerHTML = `
         <p class="highlighted-msg-preview"><strong>Input Preview:</strong> <em>${highlightedText}</em></p>
         <div class="explanation-paragraphs">
-            ${data.explanation.replace(/\n/g, "<br>")}
+            ${escapeHtml(data.explanation).replace(/\n/g, "<br>")}
         </div>
     `;
     // Reset feedback button state
@@ -230,6 +234,14 @@ function renderResults(originalText, data) {
 }
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function escapeHtml(string) {
+    return String(string ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 // Send Feedback
 async function sendFeedback(correction) {

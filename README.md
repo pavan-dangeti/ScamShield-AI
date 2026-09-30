@@ -34,31 +34,67 @@ Most commercial spam/fraud filters are trained primarily on **English-language d
 
 ## 🌐 Live Demo
 
-**Web App**
-https://scamshield-ai-glhm.onrender.com/
+**Web App** — https://scamshield-ai-glhm.onrender.com/
+**API Docs** — https://scamshield-ai-glhm.onrender.com/docs
 
-**API Docs**
-https://scamshield-ai-glhm.onrender.com/docs
+The deployment is defined in `render.yaml`, whose build command downloads the
+corpus and trains the production model, so a fresh deploy serves a working model
+rather than "Models are not trained". Check which model is live with
+`GET /api/health`.
+
+![ScamShield demo](docs/demo/scamshield_demo.gif)
+
+*The demo: an English scam is flagged with a plain-language explanation, a real bank
+notification passes, a Tanglish code-mixed message is detected as Tamil/romanized and
+flagged, and the analytics dashboard shows the traffic split.*
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌──────────────────┐      ┌───────────────────┐      ┌────────────────────────┐
-│  WhatsApp / SMS   │─────▶│   FastAPI Backend  │─────▶│   Detection Pipeline    │
-│  (Twilio webhook) │◀─────│   (main.py)        │◀─────│  - Script/lang detector │
-└──────────────────┘      │                    │      │  - Binary classifier    │
-                           │   Web Dashboard    │      │  - Tactic classifier    │
-┌──────────────────┐      │   (static/)        │      │  - Evidence extractor   │
-│  Browser UI       │◀────▶│                   │      │  - Explanation builder  │
-└──────────────────┘      └─────────┬──────────┘      └────────────────────────┘
-                                     │
-                                     ▼
-                           ┌───────────────────┐
-                           │  SQLite (feedback) │
-                           │  source: web/sms   │
-                           └───────────────────┘
+                    ┌──────────────────────────────────────────┐
+  WhatsApp / SMS ──▶│  FastAPI  (src/main.py)                  │
+  (Twilio webhook)  │  · signature validation (on by default)  │
+                    │  · CORS allowlist · rate limiter         │
+                    └───────────────┬──────────────────────────┘
+                                    │
+                    ┌───────────────▼──────────────────────────┐
+  Browser UI ──────▶│  src/inference.py                        │
+  (static/)         │  script + language detector              │
+                    │  model registry  (src/model_registry.py) │
+                    └───────┬───────────────────┬──────────────┘
+                            │                   │
+              ┌─────────────▼──────┐   ┌────────▼─────────────────────┐
+              │ ONNX int8 encoder   │   │ TF-IDF + logistic regression │
+              │ XLM-R, 278 MB      │   │ fallback, 10 MB              │
+              │ binary + 6 tactics │   │ binary + 6 tactics           │
+              └─────────┬──────────┘   └────────┬────────────────────┘
+                        │  6.1 ms p50, F1 0.998  │  1.95 ms p50, F1 0.920
+                        └──────────┬──────────────┘
+                                   │
+                    ┌──────────────▼──────────────────────────┐
+                    │  explanation builder (the message's own   │
+                    │  language) + verbatim evidence spans    │
+                    └───────────────┬──────────────────────────┘
+                                    │
+                    ┌───────────────▼──────────────────────────┐
+                    │  SQLite: analysis log, user corrections,  │
+                    │  score-distribution drift monitoring     │
+                    └─────────────────────────────────────────┘
+```
+
+Data pipeline (Phase 1) and evaluation harness (Phases 2-4) are separate from the
+request path:
+
+```
+sources ──▶ download (SHA-256) ──▶ build_dataset ──▶ train ──▶ export/quantise
+             (licence per source)   (scrub, dedup,      │            │
+                                     group-aware split) │            ▼
+                                          │            │      evaluate_models
+                                          ▼            │      evaluate_with_ci
+                                   check_leakage ◀─────┘      evaluate_robustness
+                                                                  benchmark_latency
 ```
 
 ### Detection Pipeline
@@ -82,6 +118,107 @@ https://scamshield-ai-glhm.onrender.com/docs
 | Kannada, Malayalam, Gujarati, Punjabi, Odia | Script detection only | — | Roadmap (see `docs/adding_a_language.md`) |
 
 Adding a new language requires **zero code changes** — just a new JSON language pack. See [`docs/adding_a_language.md`](docs/adding_a_language.md).
+
+---
+
+## 📊 Results
+
+Every number below is produced by a script in this repository, and the command
+that regenerates it is shown. Full method, per-language breakdown, confidence
+intervals and limitations: [`docs/model_comparison.md`](docs/model_comparison.md).
+
+### Production model, chosen on measurement
+
+| Candidate | F1 (val) | CPU p50 | Size | Throughput | Verdict |
+|---|---|---|---|---|---|
+| **XLM-R + aug, ONNX int8** | **0.9980** | 6.1 ms | 278 MB | 85 msg/s | **Shipped** - best accuracy, 3 attacks at zero flips, fast enough to serve |
+| XLM-R + aug, ONNX fp32 | 0.9980 | 6.2 ms | 1110 MB | - | Same accuracy, 4x the size for 0.1 ms: rejected |
+| TF-IDF + LR (aug) | 0.9198 | 1.95 ms | 10 MB | 3160 msg/s | Kept as the fallback for size-constrained hosts |
+
+ONNX Runtime was the surprise: it runs the encoder **5x faster** than PyTorch on
+CPU (6.2 ms vs 31.9 ms p50) and int8 quantisation is free here (278 MB, identical
+F1 0.9980, no measured accuracy cost). `python -m scripts.export_model --model
+xlmr-base-aug --quantize` produces it; the API serves it by default and falls back
+to TF-IDF if the artefact is missing.
+
+**Validation split, 1,554 rows, threshold 0.5** —
+`python -m scripts.evaluate_models --models tfidf-lr indicbertv2-mlm xlmr-base`
+
+| Model | What it is | Precision | Recall | F1 | ROC-AUC | Tactic macro-F1 | Command |
+|---|---|---|---|---|---|---|---|
+| tfidf-lr | retrained baseline, TF-IDF + LR | 0.8522 | 0.9722 | 0.9082 | 0.9892 | 0.8254 | `python -m scripts.train_tfidf` |
+| indicbertv2-mlm | IndicBERTv2 fine-tuned, 7 heads | 0.9980 | 0.9881 | 0.9930 | 1.0000 | 0.9621 | `python -m src.models.transformer --model ai4bharat/IndicBERTv2-MLM-only --config configs/indicbertv2.json` |
+| xlmr-base | XLM-R base fine-tuned, 7 heads | 0.9941 | 1.0000 | 0.9970 | 0.9999 | 0.9267 | `python -m src.models.transformer --model xlm-roberta-base --config configs/xlmr.json` |
+
+**Prompted and LoRA-tuned LLMs, on a 354-row seeded stratified subsample** (the
+same rows for both, because generation is slow) —
+`python -m scripts.evaluate_models --models llm-0shot llm-3shot --subsample 400`
+
+| Model | What it is | Precision | Recall | F1 | Tactic macro-F1 | Command |
+|---|---|---|---|---|---|---|
+| llm-0shot | Qwen2.5-7B-Instruct-4bit, rules + JSON | 0.5329 | 0.9889 | 0.6926 | 0.0919 | `python -m src.models.llm_prompted --shots 0 --limit 400` |
+| llm-3shot | same model, 3 examples | 0.5696 | 1.0000 | 0.7258 | 0.4030 | `python -m src.models.llm_prompted --shots 3 --limit 400` |
+| lora-SmolLM2-135M | SmolLM2-135M + LoRA r=16, 1 epoch | 0.9597 | 0.7944 | 0.8693 | 0.1822 | `python -m src.models.lora --model HuggingFaceTB/SmolLM2-135M-Instruct --config configs/lora_smollm135m.json --device cpu` |
+
+The prompted LLM flags 334 of 354 messages as scam (316 of 354 with three
+examples): a prompted model learns the *topic* of fraud detection, not the decision
+boundary. **Fine-tuning a 135M model - 50x smaller than the 7B it is compared
+against - reaches F1 0.869 at precision 0.96**, because the answer token it is
+trained to emit carries the corpus prior instead of the prompt's prior. For an
+imbalanced detection task, fine-tuning a small model beats prompting a large one.
+
+**Confidence intervals and calibration** —
+`python -m scripts.evaluate_with_ci --models tfidf-lr indicbertv2-mlm xlmr-base`
+
+| Model | F1 (95% CI, 2,000 bootstrap) | Macro F1 over cells | Brier | ECE |
+|---|---|---|---|---|
+| tfidf-lr | 0.9082 (0.889 - 0.926) | 0.9277 | 0.0495 | 0.0631 |
+| indicbertv2-mlm | 0.9930 (0.987 - 0.998) | 0.9972 | 0.0040 | 0.0059 |
+| xlmr-base | 0.9970 (0.993 - 1.000) | 0.9965 | 0.0023 | 0.0037 |
+
+**Robustness under attack** — a filter is attacked by construction.
+`python -m scripts.evaluate_robustness --models tfidf-lr tfidf-lr-aug xlmr-base xlmr-base-aug`
+
+F1 under six perturbation families (leetspeak, look-alike characters, transliteration
+drift, spacing tricks, emoji injection, disguised links), with the change from clean in
+brackets. Full method and caveats: [`docs/robustness.md`](docs/robustness.md).
+
+| Model | Clean F1 | char_swap | lookalike | spacing | mean flip rate |
+|---|---|---|---|---|---|
+| tfidf-lr | 0.9082 | 0.863 (-0.045) | 0.884 (-0.024) | 0.886 (-0.022) | 0.017 |
+| tfidf-lr-aug | 0.9198 | 0.902 (-0.018) | 0.909 (-0.011) | 0.911 (-0.009) | 0.015 |
+| xlmr-base | 0.9970 | 0.964 (-0.033) | 0.977 (-0.020) | 0.971 (-0.026) | 0.011 |
+| **xlmr-base-aug** | **0.9980** | **0.993 (-0.005)** | 0.986 (-0.012) | 0.985 (-0.013) | **0.003** |
+
+Leetspeak is the attack that bites, and the model that wins on clean text is not
+automatically the most robust: the un-augmented IndicBERTv2 loses 0.083 F1 to
+character swaps. Training on perturbed text made the models both more robust and
+slightly more accurate, at **no inference cost** — the augmented baseline runs at
+1.95 ms p50 versus 1.96 ms un-augmented, same 10.2 MB artefact.
+
+**Cost of a mistake.** Treating a missed scam as 10x a false alarm, the
+cost-optimal threshold is 0.30 for the baseline (from 0.45 at best-F1) and 0.45 for
+XLM-R, where the choice does not matter. The full 0.05-0.95 sweep is in
+`results/evaluation_with_ci.json`.
+
+**Latency on CPU, 100 messages** —
+`python -m scripts.benchmark_latency --models tfidf-lr indicbertv2-mlm xlmr-base --n 100 --device cpu`
+
+| Model | p50 | p95 | Throughput | Artefact |
+|---|---|---|---|---|
+| tfidf-lr | 2.31 ms | 4.00 ms | 389 msg/s | 10.2 MB |
+| indicbertv2-mlm | 38.67 ms | 134.74 ms | 20.6 msg/s | 1120 MB |
+| xlmr-base | 31.89 ms | 82.70 ms | 26.3 msg/s | 1129 MB |
+
+The prompted 7B LLM costs about $0.004 and 60 minutes per 1,000 messages on
+local hardware, or $0.14 per 1,000 via a hosted API at a blended $0.30/1M tokens
+(`python -m scripts.llm_cost --shots 3`).
+
+> **What these numbers do and do not mean.** They are **validation** numbers on a corpus
+> that is still mostly synthetic. The hand-verified real-message test set is not frozen yet,
+> so no number here measures the product on real traffic. The weak spot the breakdown does
+> surface: the baseline scores 0.652 F1 on Bengali native (precision 0.48) - it flags most
+> legitimate Bengali messages as scams, an error invisible in the aggregate.
 
 ---
 
@@ -161,8 +298,8 @@ corpus, what is real vs. synthetic vs. unverified, and the known biases.
 ### Installation
 
 ```bash
-git clone https://github.com/saikumar1626/ScamShield-AI
-cd scamshield
+git clone https://github.com/pavan-dangeti/ScamShield-AI.git
+cd ScamShield-AI
 pip install -r requirements.txt
 cp .env.example .env
 ```
@@ -293,12 +430,41 @@ scamshield/
 ![WhatsApp](screenshots/screenshots_whatsapp_demo.png)
 ---
 
-## 🔭 Limitations & Future Work
+## 🔭 Limitations
 
-- **Dataset size and balance** vary significantly by language — Telugu and Bengali coverage is currently smaller than Hindi/Tamil/English. The metrics report tracks this transparently.
-- **Synthetic-to-real generalization**: the dataset is template-generated and supplemented with a small set of real-world examples; a larger real-world corpus would improve robustness against novel scam phrasing.
-- **Romanized text normalization** currently uses fuzzy dictionary matching; a learned transliteration model could improve coverage of spelling variants.
-- **Planned**: expand to Kannada, Malayalam, Gujarati, Punjabi, and Odia language packs; multilingual explanation output (currently English-only); a lightweight Android client for on-device SMS scanning.
+These are the limitations the measured numbers actually show, not a wish list.
+
+1. **Every accuracy number is a validation number.** The hand-verified
+   real-message test set is **not frozen**: 189 English candidates are labelled
+   and waiting, and the eight Indic cells have no public real corpus. Until the
+   owner labels them and `python -m scripts.freeze_test` runs, nothing in this
+   README measures the product on real traffic. This is the single biggest gap.
+2. **The corpus is mostly synthetic or of unstated provenance.** 4,904 real rows
+   (UCI, English, UK, 2004-2011), 6,855 Bengali rows from a corpus that does not
+   state how it was collected, 2,180 template rows, 1,538 synthetic rows. See
+   [`docs/data_card.md`](docs/data_card.md).
+3. **Bengali is 37% of the corpus** from that unverified source, so per-language
+   results over-represent Bengali relative to real traffic. Telugu and Tamil
+   cells have 24-38 validation rows, wide enough that their individual numbers
+   mean little.
+4. **Tactic explanations are weaker than the decision.** Tactic labels are
+   template-derived, so tactic metrics measure "which template family is this".
+   A contextual encoder cannot attribute a verbatim evidence span, so it reports
+   generic phrasing rather than inventing a quote.
+5. **The explanations are English-only**, even when the message is not.
+6. **Adversarial coverage is six static families.** No adaptive (EOT /
+   gradient-guided) attack was run, and robustness to a seventh family is
+   untested.
+7. **The prompted-LLM arm over-flags** (334 of 354 messages called scam), which is
+   reported rather than tuned away; fine-tuning is what fixes it.
+8. **Single-rater labelling.** There is no second labeller, so the inter-rater
+   agreement check in `docs/labeling_guidelines.md` cannot be run.
+9. **English-only real data means the real-data rows are UK banking and carrier
+   messages.** Expect over-flagging of legitimate Indian marketing the model has
+   not seen.
+
+**Planned:** Kannada, Malayalam, Gujarati, Punjabi and Odia language packs;
+multilingual explanations; a frozen, published test set.
 
 ---
 

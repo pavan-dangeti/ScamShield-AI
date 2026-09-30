@@ -158,7 +158,9 @@ class MlxBackend:
 
         self._generate = generate
         self._sampler = make_sampler(temp=temperature, top_p=0.95)
-        self.model, self.tokenizer = load(model)
+        # Tolerate both the 2-tuple and (if return_config ever defaults on) 3-tuple.
+        loaded = load(model)
+        self.model, self.tokenizer = loaded[0], loaded[1]
 
     def generate(self, prompt: str) -> str:
         messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}]

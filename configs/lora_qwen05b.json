@@ -1,0 +1,12 @@
+{
+  "name": "lora-qwen2.5-0.5b",
+  "seed": 42,
+  "max_length": 256,
+  "batch_size": 8,
+  "epochs": 2,
+  "lr": 1e-4,
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.05,
+  "target_modules": ["q_proj", "v_proj"]
+}

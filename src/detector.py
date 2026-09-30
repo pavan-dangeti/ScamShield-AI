@@ -79,7 +79,7 @@ class ScriptLanguageDetector:
                 max_count = count
                 max_script = script
         # If we have a significant native script character count (at least 3 characters or 5% of text)
-        if max_count > 0 and (max_count >= 3 or (max_count / max(1, total_chars)) > 0.05):
+        if max_script is not None and max_count > 0 and (max_count >= 3 or (max_count / max(1, total_chars)) > 0.05):
             return {
                 "script_type": "native",
                 "language_guess": SCRIPT_TO_LANG.get(max_script, "Other"),

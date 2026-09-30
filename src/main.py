@@ -1,9 +1,11 @@
 import os
 import sys
+import time
+from typing import Dict
 # Add local target library directory to sys.path to resolve packages on Windows
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "lib")))
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -16,6 +18,37 @@ from src.inference import ScamShieldInference
 from src.database import init_db, save_feedback, get_stats, update_log_source
 # Initialize Database on startup
 init_db()
+# Twilio signature validation credentials.
+# Validation is ON by default. Set SKIP_TWILIO_VALIDATION=true only for local
+# testing without ngrok; a deployed webhook that skips validation lets anyone
+# POST forged messages and read the analysis response.
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+SKIP_TWILIO_VALIDATION = os.getenv("SKIP_TWILIO_VALIDATION", "false").lower() == "true"
+if SKIP_TWILIO_VALIDATION and not os.getenv("RENDER"):
+    print("WARNING: Twilio signature validation is disabled.")
+
+# CORS: the dashboard is served by this app, so third-party origins are not needed.
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:8000,http://localhost:8000").split(",")
+    if origin.strip()
+]
+# Simple in-process rate limit for the public analysis endpoint.
+RATE_LIMIT = int(os.getenv("RATE_LIMIT_PER_MINUTE", "30"))
+_rate_state: Dict[str, list[float]] = {}
+RATE_LIMIT_WINDOW = 60.0
+
+
+def rate_limit(request: Request) -> None:
+    """Reject clients that exceed RATE_LIMIT_PER_MINUTE requests per window."""
+    client = request.client.host if request.client else "unknown"
+    now = time.time()
+    hits = [stamp for stamp in _rate_state.get(client, []) if now - stamp < RATE_LIMIT_WINDOW]
+    if len(hits) >= RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many requests; slow down.")
+    hits.append(now)
+    _rate_state[client] = hits
+
 # Initialize Inference Engine
 analyzer = ScamShieldInference()
 app = FastAPI(
@@ -23,24 +56,21 @@ app = FastAPI(
     description="Regional-Language UPI/Payment Scam Detector with Tactic Explainer",
     version="1.0.0"
 )
-# Enable CORS for local testing
+# CORS restricted to configured origins (the dashboard is same-origin).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
-# Twilio signature validation credentials
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
-SKIP_TWILIO_VALIDATION = os.getenv("SKIP_TWILIO_VALIDATION", "true").lower() == "true"
 # Request Models
 class AnalyzeRequest(BaseModel):
     text: str = Field(..., description="Suspected scam message text", min_length=2)
 class FeedbackRequest(BaseModel):
     message_id: str = Field(..., description="UUID of analyzed message")
     user_correction: str = Field(..., description="Correction value: 'scam' or 'legit'")
-@app.post("/api/analyze")
+@app.post("/api/analyze", dependencies=[Depends(rate_limit)])
 async def analyze_message_endpoint(req: AnalyzeRequest):
     try:
         result = analyzer.analyze(req.text)
@@ -123,6 +153,16 @@ async def save_feedback_endpoint(req: FeedbackRequest):
         return {"status": "success", "message": "Feedback recorded successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+@app.get("/api/health")
+async def health():
+    """Liveness plus which model is actually serving, so a broken deploy is visible."""
+    return {
+        "status": "ok",
+        "model": getattr(analyzer.predictor, "name", "unknown"),
+        "trained": True,
+    }
+
+
 @app.get("/api/stats")
 async def get_stats_endpoint():
     try:
