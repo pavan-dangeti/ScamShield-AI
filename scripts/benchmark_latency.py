@@ -65,10 +65,10 @@ def main() -> None:
 
     for model_name in args.models:
         print(f"timing {model_name}...", flush=True)
-        if model_name == "tfidf-lr":
+        if model_name in ("tfidf-lr", "tfidf-lr-aug"):
             from src.models.tfidf import TfidfScamModel
 
-            model = TfidfScamModel.load("models/tfidf-lr.pkl")
+            model = TfidfScamModel.load(f"models/{model_name}.pkl")
             timing = time_calls(model.predict, texts)
             report["models"][model_name] = {
                 "device": "cpu",

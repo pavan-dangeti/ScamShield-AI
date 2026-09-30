@@ -12,7 +12,13 @@ from src.taxonomy import TACTICS
 
 
 def _model_dir(model_name: str) -> str:
-    return os.path.join("models", model_name.replace("/", "_"))
+    """Resolve a model id, optionally with a training suffix such as ``-aug``."""
+    directory = os.path.join("models", model_name.replace("/", "_"))
+    if os.path.exists(directory):
+        return directory
+    if model_name.endswith("-aug"):
+        return os.path.join("models", model_name[: -len("-aug")].replace("/", "_"))
+    raise FileNotFoundError(f"no trained checkpoint for {model_name} (looked in {directory})")
 
 
 def load_encoder(model_name: str):

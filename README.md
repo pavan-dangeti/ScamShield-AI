@@ -126,6 +126,26 @@ imbalanced detection task, fine-tuning a small model beats prompting a large one
 | indicbertv2-mlm | 0.9930 (0.987 - 0.998) | 0.9972 | 0.0040 | 0.0059 |
 | xlmr-base | 0.9970 (0.993 - 1.000) | 0.9965 | 0.0023 | 0.0037 |
 
+**Robustness under attack** — a filter is attacked by construction.
+`python -m scripts.evaluate_robustness --models tfidf-lr tfidf-lr-aug xlmr-base xlmr-base-aug`
+
+F1 under six perturbation families (leetspeak, look-alike characters, transliteration
+drift, spacing tricks, emoji injection, disguised links), with the change from clean in
+brackets. Full method and caveats: [`docs/robustness.md`](docs/robustness.md).
+
+| Model | Clean F1 | char_swap | lookalike | spacing | mean flip rate |
+|---|---|---|---|---|---|
+| tfidf-lr | 0.9082 | 0.863 (-0.045) | 0.884 (-0.024) | 0.886 (-0.022) | 0.017 |
+| tfidf-lr-aug | 0.9198 | 0.902 (-0.018) | 0.909 (-0.011) | 0.911 (-0.009) | 0.015 |
+| xlmr-base | 0.9970 | 0.964 (-0.033) | 0.977 (-0.020) | 0.971 (-0.026) | 0.011 |
+| **xlmr-base-aug** | **0.9980** | **0.993 (-0.005)** | 0.986 (-0.012) | 0.985 (-0.013) | **0.003** |
+
+Leetspeak is the attack that bites, and the model that wins on clean text is not
+automatically the most robust: the un-augmented IndicBERTv2 loses 0.083 F1 to
+character swaps. Training on perturbed text made the models both more robust and
+slightly more accurate, at **no inference cost** — the augmented baseline runs at
+1.95 ms p50 versus 1.96 ms un-augmented, same 10.2 MB artefact.
+
 **Cost of a mistake.** Treating a missed scam as 10x a false alarm, the
 cost-optimal threshold is 0.30 for the baseline (from 0.45 at best-F1) and 0.45 for
 XLM-R, where the choice does not matter. The full 0.05-0.95 sweep is in

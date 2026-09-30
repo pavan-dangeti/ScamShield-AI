@@ -33,14 +33,17 @@ MODEL_REGISTRY = {
     "indicbertv2-mlm": "ai4bharat/IndicBERTv2-MLM-only",
     "xlmr-base": "xlm-roberta-base",
     "muril-base": "google/muril-base",
+    # same checkpoints, trained with adversarial augmentation
+    "tfidf-lr-aug": None,
+    "xlmr-base-aug": "xlm-roberta-base-aug",
 }
 
 
 def binary_scores(model_name: str, rows: list[dict]) -> tuple[np.ndarray, list[list[str]]]:
     """Return (scam probability, predicted tactics) for the given model."""
     texts = [row["text"] for row in rows]
-    if model_name == "tfidf-lr":
-        model = TfidfScamModel.load("models/tfidf-lr.pkl")
+    if model_name in ("tfidf-lr", "tfidf-lr-aug"):
+        model = TfidfScamModel.load(f"models/{model_name}.pkl")
         probabilities = model.predict_binary(texts)
         tactics = [
             [t.tactic for t in prediction.tactics] for prediction in model.predict(texts)
@@ -131,8 +134,8 @@ def evaluate(model_name: str, rows: list[dict], threshold: float) -> dict:
         result["tactics"] = {"labelled_rows": 0, "note": "no gold tactic labels in this split"}
 
     # Explanation faithfulness: does the quoted evidence actually occur in the message?
-    if model_name == "tfidf-lr":
-        model = TfidfScamModel.load("models/tfidf-lr.pkl")
+    if model_name in ("tfidf-lr", "tfidf-lr-aug"):
+        model = TfidfScamModel.load(f"models/{model_name}.pkl")
         checked, faithful, attributed = 0, 0, 0
         for index, row in enumerate(rows):
             for tactic in predicted_tactics[index]:
