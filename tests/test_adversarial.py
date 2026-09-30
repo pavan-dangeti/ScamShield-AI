@@ -12,7 +12,6 @@ import sys
 import pytest
 
 from scripts.adversarial import FAMILIES, PERTURBATIONS, build_adversarial_split, perturb
-from src.data import load_split
 
 SCAM = "Urgent! Your SBI account will be blocked in 10 minutes, click http://bit.ly/kyc123 to verify."
 LEGIT = "Your account was credited with Rs 5,000 via UPI. Ref 610928"
@@ -76,7 +75,13 @@ def test_native_script_rows_are_reported_as_unchanged_not_silently_kept():
 
 
 def test_augmented_rows_are_traceable_to_their_source():
-    rows = load_split("train")[:20]
+    rows = [
+        {"id": f"src-{index}", "text": SCAM, "label": "scam", "tactics": ["urgency"],
+         "language": "english", "script": "latin"}
+        for index in range(5)
+    ]
     perturbed, _ = build_adversarial_split(rows, "char_swap", 42)
-    assert all(row["id"].startswith("test-") or "-" in row["id"] for row in perturbed)
-    assert all("attack" in row for row in perturbed)
+    assert len(perturbed) == 5
+    assert all(row["attack"] == "char_swap" for row in perturbed)
+    assert all(row["id"].startswith("src-") for row in perturbed)
+    assert all(row["label"] == "scam" for row in perturbed)
