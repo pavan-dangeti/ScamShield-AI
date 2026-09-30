@@ -401,32 +401,33 @@ scamshield/
 
 ### 🏠 Homepage
 
-![Homepage](https://drive.google.com/file/d/1qK6HmU9a2i-933J3QzXRBhWCaiEdphDm/view?usp=sharing)
+![Homepage](screenshots/screenshots_homepage.png)
 
 ---
 
 ### 🔍 Scam Detection
 
-![Scam Detection](https://drive.google.com/file/d/1FmY6CUJPL-o2p6yuM0oF9-QCR0SoYBok/view?usp=sharing)
+![Scam Detection](screenshots/screenshots_scam_detection.png)
 
 ---
 
-### 📊 Analytics Dashboard
+## 📊 Analytics Dashboard
 
-![Dashboard](https://drive.google.com/file/d/1jReU3FRVR_3VNFxguShv0gK6lNKf7K0H/view?usp=sharing)
+> ⚠️ Note: This demo is hosted on Render's free tier, which uses an ephemeral filesystem — stats shown here may reset periodically when the service restarts.
+
+![Dashboard](screenshots/screenshots_dashboard.png)
 
 ---
 
 ### 📖 API Documentation
 
-![Swagger](https://drive.google.com/file/d/121t7nmyuaSdT5cWZV1-eydyr9qrYylef/view?usp=sharing)
+![Swagger](screenshots/screenshots_swagger.png)
 
 ---
 
 ### 📱 WhatsApp Integration
 
-![WhatsApp Demo](https://drive.google.com/file/d/16Kja6olxFLfeUYJ9JQOmx7rah621BVD-/view?usp=sharing)
-
+![WhatsApp](screenshots/screenshots_whatsapp_demo.png)
 ---
 
 ## 🔭 Limitations
