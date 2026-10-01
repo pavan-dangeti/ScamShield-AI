@@ -212,7 +212,8 @@ def label_quality(kept: list[dict], primary: list[dict], recheck: list[dict]) ->
 
     lines += ["", "### Agreement with the original UCI annotation", ""]
     try:
-        reference = {f"test-{row.id}": row.label for row in load_uci().itertuples()}
+        uci = load_uci()
+        reference = {f"test-{uid}": str(label) for uid, label in zip(uci["id"], uci["label"])}
     except FileNotFoundError:
         return lines + ["- UCI source not downloaded (`python -m scripts.download_data`); not measured."]
     compared = [row for row in kept if row["id"] in reference]

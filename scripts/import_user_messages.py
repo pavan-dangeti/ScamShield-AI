@@ -100,8 +100,8 @@ def main() -> None:
         rows.append({"id": f"user-{len(rows):05d}", "text": text, "language": language, "script": script})
 
     with open(USER_IMPORT, "a", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+        for message in rows:
+            handle.write(json.dumps(message, ensure_ascii=False) + "\n")
 
     counts = pd.Series([f"{row['language']}|{row['script']}" for row in rows]).value_counts().to_dict()
     print(f"Imported {len(rows)} messages into {USER_IMPORT} ({skipped} skipped)")

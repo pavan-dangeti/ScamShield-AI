@@ -18,6 +18,7 @@ import json
 import os
 import statistics
 import time
+from typing import Any
 
 import numpy as np
 
@@ -61,7 +62,7 @@ def main() -> None:
 
     rows = load_split(args.split)[: args.n]
     texts = [row["text"] for row in rows]
-    report = {"messages_measured": len(texts), "models": {}}
+    report: dict[str, Any] = {"messages_measured": len(texts), "models": {}}
 
     for model_name in args.models:
         print(f"timing {model_name}...", flush=True)
@@ -73,7 +74,7 @@ def main() -> None:
             report["models"][model_name] = {
                 "device": "cpu",
                 **timing,
-                "artifact_mb": round(os.path.getsize("models/tfidf-lr.pkl") / 1e6, 1),
+                "artifact_mb": round(os.path.getsize(f"models/{model_name}.pkl") / 1e6, 1),
             }
         elif model_name in ("indicbertv2-mlm", "xlmr-base"):
             import torch
@@ -83,7 +84,7 @@ def main() -> None:
 
             # CPU is the deployment target, so pin the device rather than
             # inheriting whatever accelerator happens to be present.
-            model, tokenizer, config, _ = load_encoder(MODEL_REGISTRY[model_name])
+            model, tokenizer, config, _ = load_encoder(MODEL_REGISTRY[model_name] or model_name)
             device = args.device
             model = model.to(device)
 

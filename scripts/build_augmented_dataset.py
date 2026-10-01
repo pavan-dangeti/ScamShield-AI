@@ -58,7 +58,7 @@ def main() -> None:
         f"wrote {args.out}: {len(rows)} clean + {len(augmented)} augmented rows "
         f"({skipped} perturbations produced no change and were skipped)"
     )
-    by_family = {}
+    by_family: dict[str, int] = {}
     for row in augmented:
         by_family[row["attack"]] = by_family.get(row["attack"], 0) + 1
     print("  by family:", by_family)

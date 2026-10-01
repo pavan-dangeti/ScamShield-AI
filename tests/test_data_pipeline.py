@@ -212,7 +212,7 @@ def _run_freeze(tmp_path, monkeypatch, candidates, labels):
 
 
 def test_freeze_drops_synthetic_rows(tmp_path, monkeypatch):
-    candidate = {
+    candidate: dict = {
         "id": "test-1", "text": "Win a free prize click now", "language": "english", "script": "latin",
         "label": None, "tactics": [], "source": "generated_synthetic", "provenance": "synthetic",
         "synthetic": True, "cell": "english|latin",
@@ -223,7 +223,7 @@ def test_freeze_drops_synthetic_rows(tmp_path, monkeypatch):
 
 
 def test_freeze_drops_scam_without_tactic(tmp_path, monkeypatch):
-    candidate = {
+    candidate: dict = {
         "id": "test-1", "text": "Free prize click now", "language": "english", "script": "latin",
         "label": None, "tactics": [], "source": "uci_sms_spam", "provenance": "real",
         "synthetic": False, "cell": "english|latin",
@@ -234,7 +234,7 @@ def test_freeze_drops_scam_without_tactic(tmp_path, monkeypatch):
 
 
 def test_freeze_keeps_valid_labels_and_writes_test_set(tmp_path, monkeypatch):
-    candidates = [
+    candidates: list[dict] = [
         {"id": f"test-{i}", "text": text, "language": "english", "script": "latin", "label": None,
          "tactics": [], "source": "uci_sms_spam", "provenance": "real", "synthetic": False,
          "cell": "english|latin"}
@@ -253,7 +253,7 @@ def test_freeze_keeps_valid_labels_and_writes_test_set(tmp_path, monkeypatch):
 
 def test_freeze_reports_self_agreement_and_uci_disagreements(tmp_path, monkeypatch):
     texts = ["Free prize click now", "Your account was credited with Rs 500", "50% off pizza this weekend"]
-    candidates = [
+    candidates: list[dict] = [
         {"id": f"test-uci-{i}", "text": text, "language": "english", "script": "latin", "label": None,
          "tactics": [], "source": "uci_sms_spam", "provenance": "real", "synthetic": False,
          "cell": "english|latin"}
