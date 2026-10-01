@@ -74,7 +74,7 @@ log.info("model loaded", extra={"model": analyzer.model_name})
 app = FastAPI(
     title="ScamShield API",
     description="Regional-Language UPI/Payment Scam Detector with Tactic Explainer",
-    version="1.0.0"
+    version="2.0.0"
 )
 app.add_middleware(
     CORSMiddleware,
