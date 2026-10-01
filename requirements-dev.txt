@@ -4,3 +4,5 @@ mypy
 types-requests
 httpx
 pandas-stubs
+ruff
+vulture

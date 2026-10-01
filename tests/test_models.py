@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import os
-import sys
 
 import numpy as np
 
 from scripts.evaluate_models import evaluate
 from src.models.base import Prediction, TacticPrediction
-from src.models.tfidf import TfidfScamModel, load_split
+from src.models.tfidf import TfidfScamModel
 from src.taxonomy import TACTICS
 
 

@@ -77,7 +77,6 @@ def main() -> None:
                 "artifact_mb": round(os.path.getsize(f"models/{model_name}.pkl") / 1e6, 1),
             }
         elif model_name in ("indicbertv2-mlm", "xlmr-base"):
-            import torch
 
             from scripts.evaluate_models import MODEL_REGISTRY
             from src.models.transformer_infer import load_encoder

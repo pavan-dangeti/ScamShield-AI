@@ -1,0 +1,7 @@
+target-version = "py311"
+line-length = 120
+extend-exclude = ["data", "models", "notebooks"]
+
+[lint]
+# Pyflakes (unused and undefined names), import order, and commented-out code.
+select = ["F", "I", "ERA"]

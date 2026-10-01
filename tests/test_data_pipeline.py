@@ -10,15 +10,14 @@ import pytest
 
 from scripts import freeze_test, make_test_candidates
 from scripts.build_dataset import (
-    NEAR_DUP_THRESHOLD,
     assign_splits,
     deduplicate,
     near_duplicate_groups,
     normalize_text,
 )
 from scripts.generate_synthetic import validate
-from src.pii import scrub_text
 from src.detector import ScriptLanguageDetector
+from src.pii import scrub_text
 
 # Two messages from the same template with different placeholders are exactly the
 # leakage pattern that inflated the pre-upgrade metrics, so the fixtures use that shape.

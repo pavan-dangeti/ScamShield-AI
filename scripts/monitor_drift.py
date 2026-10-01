@@ -15,9 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
-from collections import defaultdict
 
 import numpy as np
 

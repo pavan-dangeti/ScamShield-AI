@@ -7,11 +7,9 @@ invalidate Phase 4. These tests pin both properties.
 
 from __future__ import annotations
 
-import sys
-
 import pytest
 
-from scripts.adversarial import FAMILIES, PERTURBATIONS, build_adversarial_split, perturb
+from scripts.adversarial import FAMILIES, build_adversarial_split, perturb
 
 SCAM = "Urgent! Your SBI account will be blocked in 10 minutes, click http://bit.ly/kyc123 to verify."
 LEGIT = "Your account was credited with Rs 5,000 via UPI. Ref 610928"
