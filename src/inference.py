@@ -2,6 +2,8 @@ import os
 import re
 import pickle
 import json
+import logging
+import sqlite3
 import uuid
 import numpy as np
 from typing import Dict, Any, List
@@ -9,7 +11,11 @@ from scipy.sparse import hstack
 from src.detector import ScriptLanguageDetector
 from src.database import log_prediction
 from src.model_registry import load_predictor, resolve_model_name
+from src.observability import DB_ERRORS, PREDICTIONS, SCORES
+from src.pii import scrub_text
 from src.taxonomy import TACTICS
+
+log = logging.getLogger("scamshield.inference")
 
 class ScamShieldInference:
     def __init__(
@@ -27,13 +33,18 @@ class ScamShieldInference:
         self.word_vec = None
         self.char_vec = None
         self.binary_model = None
-        self.tactic_models = {}
-        self.explanations = {}
+        self.tactic_models: Dict[str, Any] = {}
+        self.explanations: Dict[str, Any] = {}
         
         # Production predictor (ONNX encoder by default, TF-IDF fallback)
         self.predictor = load_predictor(resolve_model_name())
         
         self.load_artifacts()
+
+    @property
+    def model_name(self) -> str:
+        return getattr(self.predictor, "name", "unknown")
+
     def load_artifacts(self):
         # Load vectorizers
         vec_path = os.path.join(self.models_dir, "vectorizers.pkl")
@@ -144,7 +155,7 @@ class ScamShieldInference:
         footer = templates.get("scam_footer", "")
         
         return f"{header}\n" + "\n".join(bullets) + (f"\n\n{footer}" if footer else "")
-    def analyze(self, text: str) -> Dict[str, Any]:
+    def analyze(self, text: str, source: str = "web") -> Dict[str, Any]:
         """
         Analyzes the input message, returning script type, language, scam probability,
         tactic classification, evidence extraction, and summary explanation.
@@ -175,17 +186,24 @@ class ScamShieldInference:
         
         # 4. Build Explanation
         explanation = self.build_explanation(detected_tactics, label)
-        # 5. Log to SQLite
-        tactic_ids = [dt["tactic"] for dt in detected_tactics]
-        log_prediction(
-            message_id, 
-            text, 
-            label, 
-            scam_prob, 
-            tactic_ids, 
-            language_guess, 
-            script_type
+        SCORES.labels(self.model_name).observe(scam_prob)
+        PREDICTIONS.labels(label, language_guess.lower(), script_type.lower()).inc()
+        log.info(
+            "prediction",
+            extra={"label": label, "score": round(scam_prob, 4), "language": language_guess,
+                   "script": script_type, "tactics": len(detected_tactics), "source": source},
         )
+        # The analysis log is for dashboards and drift checks, not for serving: if
+        # the database is unavailable the user still gets an answer.  Stored text is
+        # scrubbed because the live service receives real people's messages.
+        try:
+            log_prediction(
+                message_id, scrub_text(text), label, scam_prob,
+                [dt["tactic"] for dt in detected_tactics], language_guess, script_type, source,
+            )
+        except sqlite3.Error:
+            DB_ERRORS.labels("log_prediction").inc()
+            log.exception("could not write the analysis log")
         return {
             "message_id": message_id,
             "scam_probability": round(scam_prob, 2),
@@ -195,7 +213,7 @@ class ScamShieldInference:
             "detected_script": detected_script,
             "tactics": detected_tactics,
             "explanation": explanation,
-            "model": getattr(self.predictor, "name", "unknown")
+            "model": self.model_name
         }
     
     def evidence_for(self, text: str, tactic: str) -> str:

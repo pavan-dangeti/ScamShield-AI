@@ -13,6 +13,7 @@ Set ``SCAMSHIELD_MODEL`` to one of:
 
 from __future__ import annotations
 
+import logging
 import os
 
 
@@ -37,13 +38,19 @@ def load_predictor(name: str):
     a fresh clone still serves a working API.
     """
     onnx_path = onnx_path_for(name)
+    if onnx_path and not os.path.exists(onnx_path):
+        logging.getLogger("scamshield.registry").warning(
+            "model artefact missing, falling back to tfidf-lr", extra={"model": name, "path": onnx_path}
+        )
     if onnx_path and os.path.exists(onnx_path):
         try:
             from src.models.onnx_infer import OnnxScamPredictor
 
             return OnnxScamPredictor(name, onnx_path)
         except Exception as error:  # noqa: BLE001 - degrade to baseline rather than crash
-            print(f"could not load {name} ({error}); falling back to tfidf-lr")
+            logging.getLogger("scamshield.registry").warning(
+                "could not load model, falling back to tfidf-lr", extra={"model": name, "error": str(error)}
+            )
     from src.models.tfidf import TfidfScamModel
 
     return TfidfScamModel.load("models/tfidf-lr.pkl")
