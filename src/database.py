@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import json
+import logging
 from datetime import datetime
 from typing import Dict, Any, List
 DB_PATH = "data/feedback.db"
@@ -38,7 +39,7 @@ def init_db():
         conn.commit()
         
     conn.close()
-    print("Database initialized successfully.")
+    logging.getLogger("scamshield.db").info("database ready", extra={"path": DB_PATH})
 def log_prediction(
     msg_id: str, 
     text: str, 
@@ -70,8 +71,8 @@ def log_prediction(
     ))
     conn.commit()
     conn.close()
-def save_feedback(msg_id: str, correction: str):
-    """Updates the user correction feedback for a logged message."""
+def save_feedback(msg_id: str, correction: str) -> int:
+    """Records a user's correction; returns the number of rows updated (0 if unknown)."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -79,19 +80,10 @@ def save_feedback(msg_id: str, correction: str):
         SET user_correction = ?
         WHERE id = ?
     """, (correction.lower(), msg_id))
+    updated = cursor.rowcount
     conn.commit()
     conn.close()
-def update_log_source(msg_id: str, source: str):
-    """Updates the traffic source (web/sms) for a logged analysis."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE analysis_logs
-        SET source = ?
-        WHERE id = ?
-    """, (source.lower(), msg_id))
-    conn.commit()
-    conn.close()
+    return updated
 def get_stats() -> Dict[str, Any]:
     """Queries and returns aggregated stats from database."""
     conn = get_db_connection()
@@ -110,7 +102,7 @@ def get_stats() -> Dict[str, Any]:
     script_dist = {row["script"].title(): row["count"] for row in cursor.fetchall()}
     # 5. Tactic distribution
     cursor.execute("SELECT detected_tactics FROM analysis_logs WHERE predicted_label = 'scam'")
-    tactic_counts = {}
+    tactic_counts: Dict[str, int] = {}
     rows = cursor.fetchall()
     for row in rows:
         tactics = json.loads(row["detected_tactics"])

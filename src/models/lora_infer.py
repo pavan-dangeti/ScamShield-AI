@@ -21,9 +21,9 @@ def load_lora(model_name: str):
         base = json.load(handle)["base_model_name_or_path"]
     tokenizer = AutoTokenizer.from_pretrained(directory)
     model = AutoModelForCausalLM.from_pretrained(base, dtype=torch.bfloat16)
-    model = PeftModel.from_pretrained(model, directory)
+    model = PeftModel.from_pretrained(model, directory)  # type: ignore[assignment]
     device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
-    return model.to(device).eval(), tokenizer, device
+    return model.to(device).eval(), tokenizer, device  # type: ignore[arg-type]
 
 
 @torch.no_grad()
@@ -31,7 +31,8 @@ def predict_lora(model_name: str, texts: list[str], rows: list[dict], max_new_to
     from src.models.lora import SYSTEM_PROMPT as LORA_SYSTEM
 
     model, tokenizer, device = load_lora(model_name)
-    probabilities, tactics = [], []
+    probabilities: list[float] = []
+    tactics: list[list[str]] = []
     for index, row in enumerate(rows):
         user = (
             f"Message:\n\"\"\"{row['text']}\"\"\"\nLanguage: {row['language']} ({row['script']})\n"

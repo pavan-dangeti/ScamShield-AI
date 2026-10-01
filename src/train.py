@@ -159,8 +159,8 @@ def train_models():
             report.append("*N/A: Group does not contain both scam and legit samples for robust evaluation.*\n")
     # Write report file
     report_content = "\n".join(report)
-    with open("models/metrics_report.md", "w", encoding="utf-8") as f:
-        f.write(report_content)
+    with open("models/metrics_report.md", "w", encoding="utf-8") as report_file:
+        report_file.write(report_content)
     
     print("Report generated and saved to models/metrics_report.md")
 if __name__ == "__main__":

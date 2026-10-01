@@ -7,36 +7,11 @@ import os
 import sys
 
 import numpy as np
-import pytest
 
 from scripts.evaluate_models import evaluate
 from src.models.base import Prediction, TacticPrediction
 from src.models.tfidf import TfidfScamModel, load_split
 from src.taxonomy import TACTICS
-
-
-@pytest.fixture(scope="module")
-def tiny_model() -> TfidfScamModel:
-    """A baseline trained on a handful of rows; enough to exercise the interface."""
-    rows = []
-    # Enough urgency positives to clear the 10-positive floor for a tactic head.
-    for index in range(12):
-        rows.append({
-            "text": f"Urgent {index}: your account will be blocked in {index + 1} minutes, click bit.ly/abc{index} now",
-            "label": "scam",
-            "tactics": ["urgency", "suspicious_link"],
-            "language": "english",
-            "script": "latin",
-        })
-    rows += [
-        {"text": "Your SBI account was credited with Rs 5,000 via UPI. Ref 610928",
-         "label": "legit", "tactics": [], "language": "english", "script": "latin"},
-        {"text": "Your login OTP is 482913. Never share it with anyone.",
-         "label": "legit", "tactics": [], "language": "english", "script": "latin"},
-        {"text": "Delivery scheduled for tomorrow between 10am and 2pm",
-         "label": "legit", "tactics": [], "language": "english", "script": "latin"},
-    ]
-    return TfidfScamModel(c_grid=[1.0]).fit(rows)
 
 
 def test_predict_returns_one_prediction_per_message(tiny_model):

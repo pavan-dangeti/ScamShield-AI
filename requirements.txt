@@ -8,3 +8,5 @@ uvicorn
 requests
 twilio
 python-dotenv
+python-multipart
+prometheus_client

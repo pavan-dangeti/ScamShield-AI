@@ -108,9 +108,9 @@ def train(model_name: str, config: dict, device_override: str | None = None) -> 
         target_modules=config.get("target_modules", ["q_proj", "v_proj"]),
         task_type="CAUSAL_LM",
     )
-    model = get_peft_model(model, lora)
-    model.to(device)
-    model.print_trainable_parameters()
+    model = get_peft_model(model, lora)  # type: ignore[assignment]
+    model.to(device)  # type: ignore[arg-type]
+    model.print_trainable_parameters()  # type: ignore[operator]
 
     train_rows = load_split("train")
     val_rows = load_split("val")

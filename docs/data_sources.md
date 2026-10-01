@@ -40,7 +40,7 @@ Note on labels: the corpus labels everything as `spam` or `ham`.  ScamShield map
 owner against `docs/labeling_guidelines.md`, because "spam" and "fraud" are not
 identical (an aggressive advert is spam but not a scam).  Any test row taken from
 this corpus is scrubbed of phone numbers, emails, UPI handles and link query
-strings by `scripts/scrub_pii.py`.
+strings by `src/pii.py`.
 
 ### 2. Bengali SMS Smishing Dataset (training only)
 

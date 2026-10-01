@@ -1,5 +1,7 @@
+import logging
 import os
 import sys
+import threading
 import time
 from typing import Dict
 # Add local target library directory to sys.path to resolve packages on Windows
@@ -10,12 +12,19 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from starlette.concurrency import run_in_threadpool
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.request_validator import RequestValidator
 # Load environment configurations
 load_dotenv()
+from src.observability import MODEL_INFO, RequestContextMiddleware, configure_logging, request_id_var
+
+configure_logging(os.getenv("LOG_LEVEL", "INFO"))
+log = logging.getLogger("scamshield.api")
+
 from src.inference import ScamShieldInference
-from src.database import init_db, save_feedback, get_stats, update_log_source
+from src.database import init_db, save_feedback, get_stats
 # Initialize Database on startup
 init_db()
 # Twilio signature validation credentials.
@@ -24,8 +33,8 @@ init_db()
 # POST forged messages and read the analysis response.
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 SKIP_TWILIO_VALIDATION = os.getenv("SKIP_TWILIO_VALIDATION", "false").lower() == "true"
-if SKIP_TWILIO_VALIDATION and not os.getenv("RENDER"):
-    print("WARNING: Twilio signature validation is disabled.")
+if SKIP_TWILIO_VALIDATION:
+    log.warning("Twilio signature validation is disabled")
 
 # CORS: the dashboard is served by this app, so third-party origins are not needed.
 ALLOWED_ORIGINS = [
@@ -37,20 +46,34 @@ ALLOWED_ORIGINS = [
 RATE_LIMIT = int(os.getenv("RATE_LIMIT_PER_MINUTE", "30"))
 _rate_state: Dict[str, list[float]] = {}
 RATE_LIMIT_WINDOW = 60.0
+# Sync endpoints and dependencies run in a threadpool, so the shared state needs a lock.
+_rate_lock = threading.Lock()
+# Longest message accepted.  Real SMS/WhatsApp scams are far shorter; the cap stops
+# one request from tying up a worker with megabytes of text.
+MAX_MESSAGE_CHARS = int(os.getenv("MAX_MESSAGE_CHARS", "2000"))
 
 
 def rate_limit(request: Request) -> None:
     """Reject clients that exceed RATE_LIMIT_PER_MINUTE requests per window."""
     client = request.client.host if request.client else "unknown"
     now = time.time()
-    hits = [stamp for stamp in _rate_state.get(client, []) if now - stamp < RATE_LIMIT_WINDOW]
-    if len(hits) >= RATE_LIMIT:
-        raise HTTPException(status_code=429, detail="Too many requests; slow down.")
-    hits.append(now)
-    _rate_state[client] = hits
+    with _rate_lock:
+        hits = [stamp for stamp in _rate_state.get(client, []) if now - stamp < RATE_LIMIT_WINDOW]
+        if len(hits) >= RATE_LIMIT:
+            raise HTTPException(status_code=429, detail="Too many requests; slow down.")
+        hits.append(now)
+        _rate_state[client] = hits
+
+
+def internal_error(what: str) -> HTTPException:
+    """Log the real error with its request ID; tell the client only how to report it."""
+    log.exception(what)
+    return HTTPException(status_code=500, detail=f"{what}. Quote request ID {request_id_var.get()} when reporting it.")
 
 # Initialize Inference Engine
 analyzer = ScamShieldInference()
+MODEL_INFO.labels(analyzer.model_name).set(1)
+log.info("model loaded", extra={"model": analyzer.model_name})
 app = FastAPI(
     title="ScamShield API",
     description="Regional-Language UPI/Payment Scam Detector with Tactic Explainer",
@@ -64,19 +87,19 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
+app.add_middleware(RequestContextMiddleware)
 # Request Models
 class AnalyzeRequest(BaseModel):
-    text: str = Field(..., description="Suspected scam message text", min_length=2)
+    text: str = Field(..., description="Suspected scam message text", min_length=2, max_length=MAX_MESSAGE_CHARS)
 class FeedbackRequest(BaseModel):
     message_id: str = Field(..., description="UUID of analyzed message")
     user_correction: str = Field(..., description="Correction value: 'scam' or 'legit'")
 @app.post("/api/analyze", dependencies=[Depends(rate_limit)])
-async def analyze_message_endpoint(req: AnalyzeRequest):
+def analyze_message_endpoint(req: AnalyzeRequest):
     try:
-        result = analyzer.analyze(req.text)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
+        return analyzer.analyze(req.text)
+    except Exception:
+        raise internal_error("Inference failed")
 @app.post("/api/sms-webhook")
 async def twilio_sms_webhook(request: Request):
     """
@@ -84,9 +107,8 @@ async def twilio_sms_webhook(request: Request):
     Performs signature verification, runs inference, and returns TwiML reply.
     """
     form_data = await request.form()
-    body = form_data.get("Body", "").strip()
-    sender = form_data.get("From", "").strip()
-    
+    body = str(form_data.get("Body", "")).strip()
+
     if not body:
         raise HTTPException(status_code=400, detail="Missing Body parameter")
         
@@ -109,11 +131,7 @@ async def twilio_sms_webhook(request: Request):
             raise HTTPException(status_code=403, detail="Invalid Twilio request signature")
             
     try:
-        # Run inference
-        result = analyzer.analyze(body)
-        
-        # Set source to 'sms' in database
-        update_log_source(result["message_id"], "sms")
+        result = await run_in_threadpool(analyzer.analyze, body[:MAX_MESSAGE_CHARS], "sms")
         
         # Construct reply message (strictly capped at 320 characters)
         prob = int(result["scam_probability"] * 100)
@@ -138,38 +156,41 @@ async def twilio_sms_webhook(request: Request):
         
         return Response(content=str(response), media_type="application/xml")
         
-    except Exception as e:
-        # Prevent throwing 500 error to Twilio, return a valid TwiML with fallback error message
+    except Exception:
+        # Twilio retries on a 500; a valid TwiML apology is the better failure mode.
+        log.exception("webhook analysis failed")
         response = MessagingResponse()
         response.message("⚠️ ScamShield is temporarily unable to analyze this message.")
         return Response(content=str(response), media_type="application/xml")
 @app.post("/api/feedback")
-async def save_feedback_endpoint(req: FeedbackRequest):
+def save_feedback_endpoint(req: FeedbackRequest):
     correction = req.user_correction.strip().lower()
     if correction not in ["scam", "legit"]:
         raise HTTPException(status_code=400, detail="Correction must be 'scam' or 'legit'")
     try:
-        save_feedback(req.message_id, correction)
-        return {"status": "success", "message": "Feedback recorded successfully."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        updated = save_feedback(req.message_id, correction)
+    except Exception:
+        raise internal_error("Could not save feedback")
+    if not updated:
+        raise HTTPException(status_code=404, detail="Unknown message_id")
+    return {"status": "success", "message": "Feedback recorded successfully."}
 @app.get("/api/health")
-async def health():
-    """Liveness plus which model is actually serving, so a broken deploy is visible."""
-    return {
-        "status": "ok",
-        "model": getattr(analyzer.predictor, "name", "unknown"),
-        "trained": True,
-    }
+def health():
+    """Liveness plus which model is actually serving, so a silent fallback is visible."""
+    return {"status": "ok", "model": analyzer.model_name}
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.get("/api/stats")
-async def get_stats_endpoint():
+def get_stats_endpoint():
     try:
-        stats = get_stats()
-        return stats
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database statistics error: {str(e)}")
+        return get_stats()
+    except Exception:
+        raise internal_error("Could not read statistics")
 # Mount static files for the web interface
 os.makedirs("static", exist_ok=True)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

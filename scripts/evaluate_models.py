@@ -17,6 +17,7 @@ import json
 import os
 import re
 from datetime import datetime, timezone
+from typing import Any
 
 import numpy as np
 from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score
@@ -50,23 +51,27 @@ def binary_scores(model_name: str, rows: list[dict]) -> tuple[np.ndarray, list[l
         ]
         return probabilities, tactics
     if model_name.startswith("llm-"):
-        shots = re.search(r"(\d+)", model_name).group(1)
+        match = re.search(r"(\d+)", model_name)
+        if match is None:
+            raise SystemExit(f"{model_name}: expected llm-<shots>shot")
+        shots = match.group(1)
         path = f"results/llm_{shots}shot_val.jsonl"
         with open(path, encoding="utf-8") as handle:
             verdicts = {json.loads(line)["id"]: json.loads(line) for line in handle if line.strip()}
-        probabilities, tactics = [], []
+        scores: list[float] = []
+        verdict_tactics: list[list[str]] = []
         for row in rows:
             verdict = verdicts.get(row["id"])
-            probabilities.append(1.0 if verdict and verdict["label"] == "scam" else 0.0)
-            tactics.append(verdict["tactics"] if verdict else [])
-        return np.array(probabilities), tactics
+            scores.append(1.0 if verdict and verdict["label"] == "scam" else 0.0)
+            verdict_tactics.append(verdict["tactics"] if verdict else [])
+        return np.array(scores), verdict_tactics
     if model_name.startswith("lora-"):
         from src.models.lora_infer import predict_lora
 
         return predict_lora(model_name.split("-", 1)[1], texts, rows)
     from src.models.transformer_infer import predict_encoder
 
-    hf_name = MODEL_REGISTRY.get(model_name, model_name)
+    hf_name = MODEL_REGISTRY.get(model_name) or model_name
     return predict_encoder(hf_name, texts, rows)
 
 
@@ -75,7 +80,7 @@ def evaluate(model_name: str, rows: list[dict], threshold: float) -> dict:
     labels = np.array([1 if row["label"] == "scam" else 0 for row in rows])
     predicted = (probabilities >= threshold).astype(int)
 
-    result = {
+    result: dict[str, Any] = {
         "model": model_name,
         "threshold": threshold,
         "rows": len(rows),

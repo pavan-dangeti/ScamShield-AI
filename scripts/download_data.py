@@ -15,13 +15,14 @@ import json
 import os
 import zipfile
 from datetime import datetime, timezone
+from typing import Any
 
 import requests
 
 RAW_DIR = "data/raw"
 MANIFEST_PATH = "data/raw_manifest.json"
 
-SOURCES = {
+SOURCES: dict[str, dict[str, Any]] = {
     "uci_sms_spam": {
         "homepage": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
         "url": "https://archive.ics.uci.edu/static/public/228/sms+spam+collection.zip",

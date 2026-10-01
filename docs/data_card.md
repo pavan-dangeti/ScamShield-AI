@@ -47,7 +47,7 @@ provides.
 1. Download every source with `python -m scripts.download_data`, verified by
    SHA-256 against `data/raw_manifest.json`.
 2. Hold out the UCI test reserve (300 messages) before any deduplication.
-3. Scrub personal data from every row (`scripts/scrub_pii.py`): emails, UPI
+3. Scrub personal data from every row (`src/pii.py`): emails, UPI
    handles, phone numbers, 12-16 digit identifiers, and link query strings
    become `[EMAIL]`, `[UPI_ID]`, `[PHONE]`, `[ID]`. The link host and path are
    kept because the link is the signal.

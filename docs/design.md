@@ -100,6 +100,36 @@ for environments where 278 MB is unacceptable. The API logs to SQLite for
 feedback and drift monitoring, and the WhatsApp webhook replies with a two-line
 verdict.
 
+The live demo serves the TF-IDF model. That is a measured constraint, not a
+preference: a server process holding the int8 encoder uses about 1.1 GB of
+memory, and the free hosting tier allows 512 MB.
+
+### 7. Operating it (`src/observability.py`)
+
+- **Logs** are one JSON object per line on stdout, each carrying the request ID
+  that is also returned to the caller as `X-Request-ID`. With one service and no
+  downstream calls, that ID is the trace; a distributed-tracing SDK would add a
+  dependency and nothing it can show. Message text is never logged.
+- **Metrics** are Prometheus, at `/metrics`: request count and latency by route
+  template, predictions by label, language and script, the served score
+  histogram (the live drift signal `scripts/monitor_drift.py` compares against
+  its reference), failed analysis-log writes, and which model is loaded.
+- **Stored messages are scrubbed** of phone numbers, emails, UPI handles and long
+  identifiers before they reach SQLite, because the live service receives real
+  people's messages.
+
+Each failure mode is induced on purpose in `tests/test_api.py`:
+
+| Failure | Behaviour |
+|---|---|
+| Model raises | 500 with a generic message and the request ID; the cause is logged, never returned |
+| Model artefact missing or corrupt | Registry logs a warning and serves the TF-IDF baseline; `/api/health` names the model actually serving |
+| Database unavailable | Analysis still answers; the failed write is logged and counted in `scamshield_db_errors_total` |
+| Oversized, empty or malformed input | 422 before inference runs |
+| Client over its rate | 429 |
+| Webhook without a valid Twilio signature | 403 |
+| Model fails inside the webhook | 200 with a TwiML apology, because a 5xx makes Twilio retry the same message |
+
 ## Alternatives considered
 
 | Decision | Chosen | Rejected | Why |
@@ -123,6 +153,11 @@ verdict.
 - **Latency vs batch.** The load test reports 85 msg/s single-process on CPU for
   the encoder. A deployment that needs more should batch; the ONNX path accepts
   batches of 32.
+- **Threads vs processes.** Inference is CPU-bound Python, so request threads
+  share one core under the GIL; throughput scales with worker processes, and
+  each process holds its own copy of the model. That is cheap at 10 MB and
+  expensive at 1.1 GB, which is another reason the baseline is the one on the
+  free tier.
 - **Evidence spans.** The baseline can attribute a span from its coefficients; a
   contextual encoder has no comparable per-token weight, so it reports generic
   phrasing. That is a real loss of explainability, taken deliberately rather than

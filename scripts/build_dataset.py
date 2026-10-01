@@ -26,7 +26,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.neighbors import NearestNeighbors
 
-from scripts.scrub_pii import scrub_text
+from src.pii import scrub_text
 from src.taxonomy import TACTICS
 
 RAW_DIR = "data/raw"
@@ -387,7 +387,7 @@ def build(val_fraction: float = 0.1, seed: int = 42, near_dup_threshold: float =
     for column in ("language", "script", "label", "source", "provenance"):
         stats[f"by_{column}"] = pool[column].value_counts().to_dict()
     stats["by_split_cell"] = {
-        "|".join(map(str, key)): int(value)
+        "|".join(map(str, key)): int(value)  # type: ignore[call-overload]  # groupby keys are tuples
         for key, value in pool.assign(split=splits)
         .groupby(["split", "language", "script", "label"])
         .size()

@@ -32,7 +32,7 @@ import pandas as pd
 
 from scripts.build_dataset import normalize_text
 from scripts.make_test_candidates import CANDIDATE_DIR, USER_IMPORT
-from scripts.scrub_pii import scrub_text
+from src.pii import scrub_text
 from src.detector import ScriptLanguageDetector
 
 LANGUAGES = ("english", "hindi", "tamil", "telugu", "bengali")
@@ -100,8 +100,8 @@ def main() -> None:
         rows.append({"id": f"user-{len(rows):05d}", "text": text, "language": language, "script": script})
 
     with open(USER_IMPORT, "a", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+        for message in rows:
+            handle.write(json.dumps(message, ensure_ascii=False) + "\n")
 
     counts = pd.Series([f"{row['language']}|{row['script']}" for row in rows]).value_counts().to_dict()
     print(f"Imported {len(rows)} messages into {USER_IMPORT} ({skipped} skipped)")

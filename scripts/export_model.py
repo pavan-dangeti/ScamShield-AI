@@ -32,7 +32,7 @@ def export_onnx(model_name: str, directory: str, max_length: int) -> str:
     from src.models.transformer import ScamEncoderModel
     from src.models.transformer_infer import _model_dir
 
-    hf_name = MODEL_REGISTRY.get(model_name, model_name)
+    hf_name = MODEL_REGISTRY.get(model_name) or model_name
     checkpoint = _model_dir(hf_name)
     tokenizer = AutoTokenizer.from_pretrained(checkpoint)
     with open(os.path.join(checkpoint, "config.json"), encoding="utf-8") as handle:
@@ -44,7 +44,8 @@ def export_onnx(model_name: str, directory: str, max_length: int) -> str:
     encoded = tokenizer(["dummy message"], return_tensors="pt", truncation=True, max_length=max_length)
     input_names = ["input_ids", "attention_mask"]
     dynamic_axes = {name: {0: "batch", 1: "sequence"} for name in input_names}
-    args, kwargs = (encoded["input_ids"], encoded["attention_mask"]), {}
+    args: tuple = (encoded["input_ids"], encoded["attention_mask"])
+    kwargs: dict = {}
     if "token_type_ids" in encoded:
         args, kwargs = args + (encoded["token_type_ids"],), {"token_type_ids": encoded["token_type_ids"]}
 
