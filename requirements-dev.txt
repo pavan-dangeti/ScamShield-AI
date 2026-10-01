@@ -2,3 +2,4 @@
 pytest
 mypy
 types-requests
+httpx
