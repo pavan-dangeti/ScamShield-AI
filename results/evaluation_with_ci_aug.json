@@ -1,0 +1,618 @@
+{
+  "split": "val",
+  "rows": 1554,
+  "models": {
+    "tfidf-lr-aug": {
+      "rows": 1554,
+      "scam_rows": 504,
+      "precision": 0.8588640275387264,
+      "recall": 0.9900793650793651,
+      "f1": 0.919815668202765,
+      "f1_ci95": [
+        0.9026036644165863,
+        0.9366391184573003
+      ],
+      "macro_f1_over_cells": 0.9520567955213592,
+      "brier": 0.051427743457098926,
+      "expected_calibration_error": 0.06904455843032055,
+      "calibration_bins": [
+        {
+          "bin": "0.0-0.1",
+          "count": 839,
+          "mean_score": 0.02296213610788381,
+          "observed_rate": 0.0
+        },
+        {
+          "bin": "0.1-0.2",
+          "count": 52,
+          "mean_score": 0.14224056123626225,
+          "observed_rate": 0.0
+        },
+        {
+          "bin": "0.2-0.3",
+          "count": 59,
+          "mean_score": 0.24633307915987857,
+          "observed_rate": 0.0
+        },
+        {
+          "bin": "0.3-0.4",
+          "count": 13,
+          "mean_score": 0.3447740324861423,
+          "observed_rate": 0.23076923076923078
+        },
+        {
+          "bin": "0.4-0.5",
+          "count": 10,
+          "mean_score": 0.4566958809494345,
+          "observed_rate": 0.2
+        },
+        {
+          "bin": "0.5-0.6",
+          "count": 16,
+          "mean_score": 0.5355845720197051,
+          "observed_rate": 0.875
+        },
+        {
+          "bin": "0.6-0.7",
+          "count": 18,
+          "mean_score": 0.6556261638737746,
+          "observed_rate": 0.4444444444444444
+        },
+        {
+          "bin": "0.7-0.8",
+          "count": 30,
+          "mean_score": 0.7577964872339096,
+          "observed_rate": 0.8
+        },
+        {
+          "bin": "0.8-0.9",
+          "count": 32,
+          "mean_score": 0.8487715984706493,
+          "observed_rate": 0.625
+        },
+        {
+          "bin": "0.9-1.0",
+          "count": 485,
+          "mean_score": 0.9843136395633295,
+          "observed_rate": 0.8927835051546392
+        }
+      ],
+      "threshold_sweep": [
+        {
+          "threshold": 0.05,
+          "precision": 0.6116504854368932,
+          "recall": 1.0,
+          "f1": 0.7590361445783133,
+          "expected_cost": 0.2059202059202059
+        },
+        {
+          "threshold": 0.1,
+          "precision": 0.7048951048951049,
+          "recall": 1.0,
+          "f1": 0.8269073010664479,
+          "expected_cost": 0.13577863577863578
+        },
+        {
+          "threshold": 0.15,
+          "precision": 0.7368421052631579,
+          "recall": 1.0,
+          "f1": 0.8484848484848485,
+          "expected_cost": 0.11583011583011583
+        },
+        {
+          "threshold": 0.2,
+          "precision": 0.7601809954751131,
+          "recall": 1.0,
+          "f1": 0.8637532133676092,
+          "expected_cost": 0.10231660231660232
+        },
+        {
+          "threshold": 0.25,
+          "precision": 0.805111821086262,
+          "recall": 1.0,
+          "f1": 0.8920353982300885,
+          "expected_cost": 0.07850707850707851
+        },
+        {
+          "threshold": 0.3,
+          "precision": 0.8344370860927153,
+          "recall": 1.0,
+          "f1": 0.9097472924187726,
+          "expected_cost": 0.06435006435006435
+        },
+        {
+          "threshold": 0.35,
+          "precision": 0.8408710217755444,
+          "recall": 0.996031746031746,
+          "f1": 0.9118982742960945,
+          "expected_cost": 0.074002574002574
+        },
+        {
+          "threshold": 0.4,
+          "precision": 0.8477157360406091,
+          "recall": 0.9940476190476191,
+          "f1": 0.915068493150685,
+          "expected_cost": 0.07722007722007722
+        },
+        {
+          "threshold": 0.45,
+          "precision": 0.8520408163265306,
+          "recall": 0.9940476190476191,
+          "f1": 0.9175824175824175,
+          "expected_cost": 0.07528957528957529
+        },
+        {
+          "threshold": 0.5,
+          "precision": 0.8588640275387264,
+          "recall": 0.9900793650793651,
+          "f1": 0.919815668202765,
+          "expected_cost": 0.08494208494208494
+        },
+        {
+          "threshold": 0.55,
+          "precision": 0.8573943661971831,
+          "recall": 0.9662698412698413,
+          "f1": 0.9085820895522388,
+          "expected_cost": 0.1615186615186615
+        },
+        {
+          "threshold": 0.6,
+          "precision": 0.8584070796460177,
+          "recall": 0.9623015873015873,
+          "f1": 0.9073900841908326,
+          "expected_cost": 0.17374517374517376
+        },
+        {
+          "threshold": 0.65,
+          "precision": 0.8637992831541219,
+          "recall": 0.9563492063492064,
+          "f1": 0.9077212806026366,
+          "expected_cost": 0.19047619047619047
+        },
+        {
+          "threshold": 0.7,
+          "precision": 0.8720292504570384,
+          "recall": 0.9464285714285714,
+          "f1": 0.9077069457659372,
+          "expected_cost": 0.2187902187902188
+        },
+        {
+          "threshold": 0.75,
+          "precision": 0.8766355140186916,
+          "recall": 0.9305555555555556,
+          "f1": 0.9027911453320501,
+          "expected_cost": 0.2676962676962677
+        },
+        {
+          "threshold": 0.8,
+          "precision": 0.8762088974854932,
+          "recall": 0.8988095238095238,
+          "f1": 0.8873653281096964,
+          "expected_cost": 0.36936936936936937
+        },
+        {
+          "threshold": 0.85,
+          "precision": 0.8784860557768924,
+          "recall": 0.875,
+          "f1": 0.8767395626242545,
+          "expected_cost": 0.4446589446589447
+        },
+        {
+          "threshold": 0.9,
+          "precision": 0.8927835051546392,
+          "recall": 0.8591269841269841,
+          "f1": 0.8756319514661274,
+          "expected_cost": 0.49034749034749037
+        },
+        {
+          "threshold": 0.95,
+          "precision": 0.9806763285024155,
+          "recall": 0.8055555555555556,
+          "f1": 0.8845315904139434,
+          "expected_cost": 0.6357786357786358
+        }
+      ],
+      "cost_ratio": 10.0,
+      "best_threshold_by_cost": {
+        "threshold": 0.3,
+        "precision": 0.8344370860927153,
+        "recall": 1.0,
+        "f1": 0.9097472924187726,
+        "expected_cost": 0.06435006435006435
+      },
+      "best_threshold_by_f1": {
+        "threshold": 0.5,
+        "precision": 0.8588640275387264,
+        "recall": 0.9900793650793651,
+        "f1": 0.919815668202765,
+        "expected_cost": 0.08494208494208494
+      },
+      "by_cell": {
+        "bengali|native": {
+          "rows": 192,
+          "scam_rows": 72,
+          "precision": 0.4931506849315068,
+          "recall": 1.0,
+          "f1": 0.6605504587155964,
+          "f1_ci95": [
+            0.5853470919324577,
+            0.7306018594927655
+          ]
+        },
+        "bengali|romanized": {
+          "rows": 380,
+          "scam_rows": 152,
+          "precision": 0.9620253164556962,
+          "recall": 1.0,
+          "f1": 0.9806451612903225,
+          "f1_ci95": [
+            0.9629629629629629,
+            0.9939024390243902
+          ]
+        },
+        "english|latin": {
+          "rows": 699,
+          "scam_rows": 141,
+          "precision": 0.9928057553956835,
+          "recall": 0.9787234042553191,
+          "f1": 0.9857142857142858,
+          "f1_ci95": [
+            0.9702111781517941,
+            0.996805618946194
+          ]
+        },
+        "hindi|native": {
+          "rows": 58,
+          "scam_rows": 22,
+          "precision": 1.0,
+          "recall": 0.9545454545454546,
+          "f1": 0.9767441860465116,
+          "f1_ci95": [
+            0.918918918918919,
+            1.0
+          ]
+        },
+        "hindi|romanized": {
+          "rows": 91,
+          "scam_rows": 47,
+          "precision": 1.0,
+          "recall": 0.9787234042553191,
+          "f1": 0.989247311827957,
+          "f1_ci95": [
+            0.963855421686747,
+            1.0
+          ]
+        },
+        "tamil|native": {
+          "rows": 32,
+          "scam_rows": 15,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "f1_ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "tamil|romanized": {
+          "rows": 38,
+          "scam_rows": 20,
+          "precision": 0.9523809523809523,
+          "recall": 1.0,
+          "f1": 0.975609756097561,
+          "f1_ci95": [
+            0.9142857142857143,
+            1.0
+          ]
+        },
+        "telugu|native": {
+          "rows": 24,
+          "scam_rows": 13,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "f1_ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "telugu|romanized": {
+          "rows": 40,
+          "scam_rows": 22,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "f1_ci95": [
+            1.0,
+            1.0
+          ]
+        }
+      }
+    },
+    "xlmr-base-aug": {
+      "rows": 1554,
+      "scam_rows": 504,
+      "precision": 0.9960474308300395,
+      "recall": 1.0,
+      "f1": 0.998019801980198,
+      "f1_ci95": [
+        0.9949746213443855,
+        1.0
+      ],
+      "macro_f1_over_cells": 0.9992175273865413,
+      "brier": 0.0010108184348528613,
+      "expected_calibration_error": 0.001570259060705355,
+      "calibration_bins": [
+        {
+          "bin": "0.0-0.1",
+          "count": 1048,
+          "mean_score": 0.0005921643670811185,
+          "observed_rate": 0.0
+        },
+        {
+          "bin": "0.7-0.8",
+          "count": 1,
+          "mean_score": 0.7364704012870789,
+          "observed_rate": 0.0
+        },
+        {
+          "bin": "0.9-1.0",
+          "count": 505,
+          "mean_score": 0.9958750021339643,
+          "observed_rate": 0.998019801980198
+        }
+      ],
+      "threshold_sweep": [
+        {
+          "threshold": 0.05,
+          "precision": 0.9940828402366864,
+          "recall": 1.0,
+          "f1": 0.9970326409495549,
+          "expected_cost": 0.0019305019305019305
+        },
+        {
+          "threshold": 0.1,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.15,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.2,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.25,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.3,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.35,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.4,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.45,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.5,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.55,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.6,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.65,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.7,
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "expected_cost": 0.001287001287001287
+        },
+        {
+          "threshold": 0.75,
+          "precision": 0.998019801980198,
+          "recall": 1.0,
+          "f1": 0.9990089197224975,
+          "expected_cost": 0.0006435006435006435
+        },
+        {
+          "threshold": 0.8,
+          "precision": 0.998019801980198,
+          "recall": 1.0,
+          "f1": 0.9990089197224975,
+          "expected_cost": 0.0006435006435006435
+        },
+        {
+          "threshold": 0.85,
+          "precision": 0.998019801980198,
+          "recall": 1.0,
+          "f1": 0.9990089197224975,
+          "expected_cost": 0.0006435006435006435
+        },
+        {
+          "threshold": 0.9,
+          "precision": 0.998019801980198,
+          "recall": 1.0,
+          "f1": 0.9990089197224975,
+          "expected_cost": 0.0006435006435006435
+        },
+        {
+          "threshold": 0.95,
+          "precision": 0.998019801980198,
+          "recall": 1.0,
+          "f1": 0.9990089197224975,
+          "expected_cost": 0.0006435006435006435
+        }
+      ],
+      "cost_ratio": 10.0,
+      "best_threshold_by_cost": {
+        "threshold": 0.75,
+        "precision": 0.998019801980198,
+        "recall": 1.0,
+        "f1": 0.9990089197224975,
+        "expected_cost": 0.0006435006435006435
+      },
+      "best_threshold_by_f1": {
+        "threshold": 0.75,
+        "precision": 0.998019801980198,
+        "recall": 1.0,
+        "f1": 0.9990089197224975,
+        "expected_cost": 0.0006435006435006435
+      },
+      "by_cell": {
+        "bengali|native": {
+          "rows": 192,
+          "scam_rows": 72,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "f1_ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "bengali|romanized": {
+          "rows": 380,
+          "scam_rows": 152,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "f1_ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "english|latin": {
+          "rows": 699,
+          "scam_rows": 141,
+          "precision": 0.986013986013986,
+          "recall": 1.0,
+          "f1": 0.9929577464788732,
+          "f1_ci95": [
+            0.982075618182524,
+            1.0
+          ]
+        },
+        "hindi|native": {
+          "rows": 58,
+          "scam_rows": 22,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "f1_ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "hindi|romanized": {
+          "rows": 91,
+          "scam_rows": 47,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "f1_ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "tamil|native": {
+          "rows": 32,
+          "scam_rows": 15,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "f1_ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "tamil|romanized": {
+          "rows": 38,
+          "scam_rows": 20,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "f1_ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "telugu|native": {
+          "rows": 24,
+          "scam_rows": 13,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "f1_ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "telugu|romanized": {
+          "rows": 40,
+          "scam_rows": 22,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "f1_ci95": [
+            1.0,
+            1.0
+          ]
+        }
+      }
+    }
+  }
+}

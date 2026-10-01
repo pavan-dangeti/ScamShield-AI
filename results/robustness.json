@@ -1,0 +1,287 @@
+{
+  "split": "val",
+  "rows": 1554,
+  "threshold": 0.5,
+  "models": {
+    "tfidf-lr": {
+      "clean": {
+        "precision": 0.8521739130434782,
+        "recall": 0.9722222222222222,
+        "f1": 0.9082483781278962,
+        "scam_calls": 575
+      },
+      "attacks": {
+        "char_swap": {
+          "precision": 0.7989864864864865,
+          "recall": 0.9384920634920635,
+          "f1": 0.8631386861313869,
+          "scam_calls": 592,
+          "f1_delta": -0.0451,
+          "flip_rate": 0.0405,
+          "rows_unchanged_by_attack": 137,
+          "scam_recall_delta": -0.0337
+        },
+        "lookalike": {
+          "precision": 0.852670349907919,
+          "recall": 0.9186507936507936,
+          "f1": 0.8844317096466093,
+          "scam_calls": 543,
+          "f1_delta": -0.0238,
+          "flip_rate": 0.0309,
+          "rows_unchanged_by_attack": 40,
+          "scam_recall_delta": -0.0536
+        },
+        "transliteration": {
+          "precision": 0.8440207972270364,
+          "recall": 0.9662698412698413,
+          "f1": 0.9010175763182239,
+          "scam_calls": 577,
+          "f1_delta": -0.0072,
+          "flip_rate": 0.0077,
+          "rows_unchanged_by_attack": 10,
+          "scam_recall_delta": -0.006
+        },
+        "spacing": {
+          "precision": 0.8438061041292639,
+          "recall": 0.9325396825396826,
+          "f1": 0.885956644674835,
+          "scam_calls": 557,
+          "f1_delta": -0.0223,
+          "flip_rate": 0.0193,
+          "rows_unchanged_by_attack": 10,
+          "scam_recall_delta": -0.0397
+        },
+        "emoji": {
+          "precision": 0.8519163763066202,
+          "recall": 0.9702380952380952,
+          "f1": 0.9072356215213359,
+          "scam_calls": 574,
+          "f1_delta": -0.001,
+          "flip_rate": 0.0019,
+          "rows_unchanged_by_attack": 0,
+          "scam_recall_delta": -0.002
+        },
+        "disguised_link": {
+          "precision": 0.8496503496503497,
+          "recall": 0.9642857142857143,
+          "f1": 0.9033457249070632,
+          "scam_calls": 572,
+          "f1_delta": -0.0049,
+          "flip_rate": 0.0032,
+          "rows_unchanged_by_attack": 1288,
+          "scam_recall_delta": -0.0079
+        }
+      }
+    },
+    "tfidf-lr-aug": {
+      "clean": {
+        "precision": 0.8588640275387264,
+        "recall": 0.9900793650793651,
+        "f1": 0.919815668202765,
+        "scam_calls": 581
+      },
+      "attacks": {
+        "char_swap": {
+          "precision": 0.8506151142355008,
+          "recall": 0.9603174603174603,
+          "f1": 0.902143522833178,
+          "scam_calls": 569,
+          "f1_delta": -0.0177,
+          "flip_rate": 0.0154,
+          "rows_unchanged_by_attack": 137,
+          "scam_recall_delta": -0.0298
+        },
+        "lookalike": {
+          "precision": 0.8573943661971831,
+          "recall": 0.9662698412698413,
+          "f1": 0.9085820895522388,
+          "scam_calls": 568,
+          "f1_delta": -0.0112,
+          "flip_rate": 0.0148,
+          "rows_unchanged_by_attack": 40,
+          "scam_recall_delta": -0.0238
+        },
+        "transliteration": {
+          "precision": 0.8529411764705882,
+          "recall": 0.9781746031746031,
+          "f1": 0.911275415896488,
+          "scam_calls": 578,
+          "f1_delta": -0.0085,
+          "flip_rate": 0.0058,
+          "rows_unchanged_by_attack": 10,
+          "scam_recall_delta": -0.0119
+        },
+        "spacing": {
+          "precision": 0.8566433566433567,
+          "recall": 0.9722222222222222,
+          "f1": 0.9107806691449815,
+          "scam_calls": 572,
+          "f1_delta": -0.009,
+          "flip_rate": 0.0109,
+          "rows_unchanged_by_attack": 10,
+          "scam_recall_delta": -0.0179
+        },
+        "emoji": {
+          "precision": 0.8586206896551725,
+          "recall": 0.9880952380952381,
+          "f1": 0.9188191881918819,
+          "scam_calls": 580,
+          "f1_delta": -0.001,
+          "flip_rate": 0.0006,
+          "rows_unchanged_by_attack": 0,
+          "scam_recall_delta": -0.002
+        },
+        "disguised_link": {
+          "precision": 0.8581314878892734,
+          "recall": 0.9841269841269841,
+          "f1": 0.9168207024029574,
+          "scam_calls": 578,
+          "f1_delta": -0.003,
+          "flip_rate": 0.0019,
+          "rows_unchanged_by_attack": 1288,
+          "scam_recall_delta": -0.006
+        }
+      }
+    },
+    "xlmr-base": {
+      "clean": {
+        "precision": 0.9940828402366864,
+        "recall": 1.0,
+        "f1": 0.9970326409495549,
+        "scam_calls": 507
+      },
+      "attacks": {
+        "char_swap": {
+          "precision": 0.9736842105263158,
+          "recall": 0.9543650793650794,
+          "f1": 0.9639278557114228,
+          "scam_calls": 494,
+          "f1_delta": -0.0331,
+          "flip_rate": 0.0238,
+          "rows_unchanged_by_attack": 137,
+          "scam_recall_delta": -0.0456
+        },
+        "lookalike": {
+          "precision": 0.9858585858585859,
+          "recall": 0.9682539682539683,
+          "f1": 0.9769769769769769,
+          "scam_calls": 495,
+          "f1_delta": -0.0201,
+          "flip_rate": 0.0167,
+          "rows_unchanged_by_attack": 40,
+          "scam_recall_delta": -0.0317
+        },
+        "transliteration": {
+          "precision": 0.9900793650793651,
+          "recall": 0.9900793650793651,
+          "f1": 0.9900793650793651,
+          "scam_calls": 504,
+          "f1_delta": -0.007,
+          "flip_rate": 0.0045,
+          "rows_unchanged_by_attack": 10,
+          "scam_recall_delta": -0.0099
+        },
+        "spacing": {
+          "precision": 0.9856850715746421,
+          "recall": 0.9563492063492064,
+          "f1": 0.9707955689828801,
+          "scam_calls": 489,
+          "f1_delta": -0.0262,
+          "flip_rate": 0.0193,
+          "rows_unchanged_by_attack": 10,
+          "scam_recall_delta": -0.0437
+        },
+        "emoji": {
+          "precision": 0.9901574803149606,
+          "recall": 0.998015873015873,
+          "f1": 0.9940711462450593,
+          "scam_calls": 508,
+          "f1_delta": -0.003,
+          "flip_rate": 0.0032,
+          "rows_unchanged_by_attack": 0,
+          "scam_recall_delta": -0.002
+        },
+        "disguised_link": {
+          "precision": 0.9921259842519685,
+          "recall": 1.0,
+          "f1": 0.9960474308300395,
+          "scam_calls": 508,
+          "f1_delta": -0.001,
+          "flip_rate": 0.0006,
+          "rows_unchanged_by_attack": 1288,
+          "scam_recall_delta": 0.0
+        }
+      }
+    },
+    "xlmr-base-aug": {
+      "clean": {
+        "precision": 0.9960474308300395,
+        "recall": 1.0,
+        "f1": 0.998019801980198,
+        "scam_calls": 506
+      },
+      "attacks": {
+        "char_swap": {
+          "precision": 0.9920792079207921,
+          "recall": 0.9940476190476191,
+          "f1": 0.9930624380574826,
+          "scam_calls": 505,
+          "f1_delta": -0.005,
+          "flip_rate": 0.0032,
+          "rows_unchanged_by_attack": 137,
+          "scam_recall_delta": -0.006
+        },
+        "lookalike": {
+          "precision": 0.9880478087649402,
+          "recall": 0.9841269841269841,
+          "f1": 0.9860834990059643,
+          "scam_calls": 502,
+          "f1_delta": -0.0119,
+          "flip_rate": 0.009,
+          "rows_unchanged_by_attack": 40,
+          "scam_recall_delta": -0.0159
+        },
+        "transliteration": {
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "scam_calls": 506,
+          "f1_delta": 0.0,
+          "flip_rate": 0.0,
+          "rows_unchanged_by_attack": 10,
+          "scam_recall_delta": 0.0
+        },
+        "spacing": {
+          "precision": 0.9822485207100592,
+          "recall": 0.9880952380952381,
+          "f1": 0.9851632047477745,
+          "scam_calls": 507,
+          "f1_delta": -0.0129,
+          "flip_rate": 0.0084,
+          "rows_unchanged_by_attack": 10,
+          "scam_recall_delta": -0.0119
+        },
+        "emoji": {
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "scam_calls": 506,
+          "f1_delta": 0.0,
+          "flip_rate": 0.0,
+          "rows_unchanged_by_attack": 0,
+          "scam_recall_delta": 0.0
+        },
+        "disguised_link": {
+          "precision": 0.9960474308300395,
+          "recall": 1.0,
+          "f1": 0.998019801980198,
+          "scam_calls": 506,
+          "f1_delta": 0.0,
+          "flip_rate": 0.0,
+          "rows_unchanged_by_attack": 1288,
+          "scam_recall_delta": 0.0
+        }
+      }
+    }
+  }
+}

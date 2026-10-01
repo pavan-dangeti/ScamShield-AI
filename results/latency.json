@@ -1,0 +1,53 @@
+{
+  "messages_measured": 200,
+  "models": {
+    "tfidf-lr": {
+      "device": "cpu",
+      "p50_ms": 0.51,
+      "p95_ms": 0.57,
+      "mean_ms": 0.52,
+      "messages_per_second_single_core": 1911.9,
+      "artifact_mb": 10.2
+    },
+    "tfidf-lr-aug": {
+      "device": "cpu",
+      "p50_ms": 0.52,
+      "p95_ms": 0.58,
+      "mean_ms": 0.52,
+      "messages_per_second_single_core": 1911.0,
+      "artifact_mb": 16.6
+    },
+    "indicbertv2-mlm": {
+      "device": "cpu",
+      "p50_ms": 11.73,
+      "p95_ms": 19.42,
+      "mean_ms": 12.06,
+      "messages_per_second_single_core": 82.9,
+      "artifact_mb": 1120.0
+    },
+    "xlmr-base": {
+      "device": "cpu",
+      "p50_ms": 11.71,
+      "p95_ms": 17.09,
+      "mean_ms": 13.1,
+      "messages_per_second_single_core": 76.3,
+      "artifact_mb": 1129.4
+    },
+    "xlmr-aug-fp32": {
+      "device": "cpu",
+      "p50_ms": 6.29,
+      "p95_ms": 10.86,
+      "mean_ms": 7.32,
+      "messages_per_second_single_core": 136.5,
+      "artifact_mb": 1110.1
+    },
+    "xlmr-aug-int8": {
+      "device": "cpu",
+      "p50_ms": 4.44,
+      "p95_ms": 9.72,
+      "mean_ms": 5.21,
+      "messages_per_second_single_core": 192.0,
+      "artifact_mb": 278.3
+    }
+  }
+}

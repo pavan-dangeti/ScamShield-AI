@@ -1,0 +1,32 @@
+[
+  {
+    "mode": "http",
+    "url": "http://127.0.0.1:8011/api/analyze",
+    "concurrency": 1,
+    "messages": 1000,
+    "seconds": 8.78,
+    "requests_per_second": 113.9,
+    "p50_ms": 8.31,
+    "p95_ms": 13.59,
+    "p99_ms": 18.99,
+    "error_rate": 0.0,
+    "status_counts": {
+      "200": 1000
+    }
+  },
+  {
+    "mode": "http",
+    "url": "http://127.0.0.1:8011/api/analyze",
+    "concurrency": 8,
+    "messages": 1000,
+    "seconds": 2.58,
+    "requests_per_second": 388.1,
+    "p50_ms": 19.32,
+    "p95_ms": 33.62,
+    "p99_ms": 47.64,
+    "error_rate": 0.0,
+    "status_counts": {
+      "200": 1000
+    }
+  }
+]
