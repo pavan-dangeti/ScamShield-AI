@@ -104,6 +104,13 @@ class TfidfScamModel:
         assert self.binary_model is not None, "model is not fitted"
         return self.binary_model.predict_proba(self._features(list(texts)))[:, 1]
 
+    def _predict_heads(self, texts: list[str]) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+        # Vectorising is ~85% of inference cost, so all seven heads share one pass.
+        assert self.binary_model is not None, "model is not fitted"
+        features = self._features(texts)
+        tactics = {tactic: model.predict_proba(features)[:, 1] for tactic, model in self.tactic_models.items()}
+        return self.binary_model.predict_proba(features)[:, 1], tactics
+
     def _tactic_spans(self, text: str, tactic: str) -> str:
         """The n-gram that pushed a tactic head, quoted verbatim from the message.
 
@@ -122,8 +129,9 @@ class TfidfScamModel:
         char_scores = self.char_vectorizer.transform([text]).multiply(coefficients[word_size:]).toarray().ravel()
         lowered = text.lower()
 
-        word_term = self.word_vectorizer.get_feature_names_out()[int(word_scores.argmax())]
-        char_term = self.char_vectorizer.get_feature_names_out()[int(char_scores.argmax())]
+        word_names, char_names = self._feature_names()
+        word_term = word_names[int(word_scores.argmax())]
+        char_term = char_names[int(char_scores.argmax())]
         candidates = []
         if word_scores.max() > 0:
             candidates.append(word_term)
@@ -138,13 +146,22 @@ class TfidfScamModel:
                 return candidate
         return "suspicious phrasing"
 
+    def _feature_names(self) -> tuple[np.ndarray, np.ndarray]:
+        # get_feature_names_out() rebuilds the whole vocabulary array on every call,
+        # which made each quoted evidence span cost ~20 ms.  Built once, per process.
+        cached = self.__dict__.get("_names_cache")
+        if cached is None:
+            assert self.word_vectorizer is not None and self.char_vectorizer is not None, "model is not fitted"
+            cached = (self.word_vectorizer.get_feature_names_out(), self.char_vectorizer.get_feature_names_out())
+            self.__dict__["_names_cache"] = cached
+        return cached
+
+    def __getstate__(self) -> dict:
+        # Keep the cache out of the artefact: it is derived and doubles the file size.
+        return {key: value for key, value in self.__dict__.items() if key != "_names_cache"}
+
     def predict(self, texts: list[str]) -> list[Prediction]:
-        texts = list(texts)
-        probabilities = self.predict_binary(texts)
-        tactic_probabilities = {
-            tactic: model.predict_proba(self._features(texts))[:, 1]
-            for tactic, model in self.tactic_models.items()
-        }
+        probabilities, tactic_probabilities = self._predict_heads(list(texts))
         predictions = []
         for index, text in enumerate(texts):
             tactics = []
