@@ -205,7 +205,7 @@ function renderResults(originalText, data) {
     expBox.innerHTML = `
         <p class="highlighted-msg-preview"><strong>Input Preview:</strong> <em>${highlightedText}</em></p>
         <div class="explanation-paragraphs">
-            ${escapeHtml(data.explanation).replace(/\n/g, "<br>")}
+            ${escapeHtml(data.explanation).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>")}
         </div>
     `;
     resetFeedbackButtons();
