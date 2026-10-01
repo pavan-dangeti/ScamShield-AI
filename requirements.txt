@@ -1,12 +1,14 @@
-pandas
-scikit-learn
-numpy
-scipy
-pyarrow
-fastapi
-uvicorn
-requests
-twilio
-python-dotenv
-python-multipart
-prometheus_client
+# Runtime dependencies, pinned so every deploy and CI run installs the same
+# versions. Dependabot proposes upgrades as pull requests; CI must pass first.
+pandas==3.0.6
+scikit-learn==1.9.1
+numpy==2.4.6
+scipy==1.17.1
+pyarrow==25.0.1
+fastapi==0.142.2
+uvicorn==0.54.0
+requests==2.34.2
+twilio==9.11.2
+python-dotenv==1.2.3
+python-multipart==0.0.32
+prometheus-client==0.26.0
