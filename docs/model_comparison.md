@@ -122,19 +122,22 @@ measured cost, not adopt whatever the validation F1 happens to like.
 
 ## 6. Latency, size and cost
 
-`python -m scripts.benchmark_latency --models tfidf-lr indicbertv2-mlm xlmr-base --n 100 --device cpu`
+`python -m scripts.benchmark_latency --models tfidf-lr tfidf-lr-aug indicbertv2-mlm xlmr-base xlmr-aug-fp32 xlmr-aug-int8 --n 200 --device cpu`
 
-CPU, one message at a time, 100 messages:
+CPU, one message at a time, 200 messages, all six models in one run (`results/latency.json`):
 
 | Model | p50 | p95 | Throughput | Artefact |
 |---|---|---|---|---|
-| tfidf-lr | 2.31 ms | 4.00 ms | 389 msg/s | 10.2 MB |
-| indicbertv2-mlm | 38.67 ms | 134.74 ms | 20.6 msg/s | 1120 MB |
-| xlmr-base | 31.89 ms | 82.70 ms | 26.3 msg/s | 1129 MB |
+| tfidf-lr | 0.51 ms | 0.57 ms | 1912 msg/s | 10.2 MB |
+| tfidf-lr-aug | 0.52 ms | 0.58 ms | 1911 msg/s | 16.6 MB |
+| indicbertv2-mlm (PyTorch) | 11.73 ms | 19.42 ms | 83 msg/s | 1120 MB |
+| xlmr-base (PyTorch) | 11.71 ms | 17.09 ms | 76 msg/s | 1129 MB |
+| xlmr-aug, ONNX fp32 | 6.29 ms | 10.86 ms | 137 msg/s | 1110 MB |
+| xlmr-aug, ONNX int8 | 4.44 ms | 9.72 ms | 192 msg/s | 278 MB |
 
-The baseline is 13-16x faster and 110x smaller. The encoders are still fast enough
-for a server or an on-device check on a modern phone, but they are 1.1 GB fp32
-downloads unless quantised, which is Phase 5 work.
+The baseline is about 9x faster than the int8 encoder and 27x smaller. Exporting
+to ONNX and quantising to int8 makes the encoder 2.6x faster than PyTorch and 4x
+smaller, with no measured F1 loss (`results/export.json`).
 
 Prompted LLM cost, `python -m scripts.llm_cost --shots 3`, from measured token
 counts (440 input + 13 output tokens per message):

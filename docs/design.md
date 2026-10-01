@@ -136,23 +136,25 @@ Each failure mode is induced on purpose in `tests/test_api.py`:
 |---|---|---|---|
 | Split unit | near-duplicate group | random row | random row split on templates reports 1.0 F1 and measures nothing |
 | Model | XLM-R base + augmentation, int8 ONNX | prompted 7B LLM | prompting over-flags (334/354 scam); a 135M LoRA model beat the 7B by 14 F1 points |
-| Baseline | TF-IDF + LR | none - it stays as the comparison point | it is the incumbent, and it is 10 MB and 1.95 ms, which is a real deployment point |
+| Baseline | TF-IDF + LR | none - it stays as the comparison point | it is the incumbent, and it is 10 MB and 0.51 ms, which is a real deployment point |
 | Tactic head | multi-label head on the same backbone | separate tactic model | cheaper, and the shared representation is consistent between decision and explanation |
 | Robustness | augmentation | input normalisation | normalisation is invertible; augmentation changes the model |
-| Inference | ONNX Runtime int8 | PyTorch fp32 | 4× smaller and 5× faster on CPU for no measured F1 loss |
+| Inference | ONNX Runtime int8 | PyTorch fp32 | 4× smaller and 2.6× faster on CPU (4.44 vs 11.71 ms p50) for no measured F1 loss |
 | Explanation span | quote only a verbatim substring | quote the top n-gram | a rebuilt word n-gram can be text the sender never wrote |
 
 ## Trade-offs
 
-- **Size vs accuracy.** The int8 encoder is 278 MB and 6.1 ms p50; TF-IDF is
-  10 MB and 1.95 ms. The TF-IDF model is 0.09 F1 worse on the validation split.
-  Both are selectable at runtime.
+- **Size vs accuracy.** The int8 encoder is 278 MB and 4.44 ms p50; TF-IDF is
+  10 MB and 0.51 ms (`results/latency.json`). The TF-IDF model is 0.09 F1 worse
+  on the validation split. Both are selectable at runtime.
 - **Threshold.** Treating a missed scam as 10× a false alarm moves the optimal
   threshold from 0.45 to 0.30 for the baseline. This is a product judgement; the
   sweep is published so the sensitivity is visible.
-- **Latency vs batch.** The load test reports 85 msg/s single-process on CPU for
-  the encoder. A deployment that needs more should batch; the ONNX path accepts
-  batches of 32.
+- **Latency vs batch.** Batching does not help on CPU. One process scores
+  178 msg/s one message at a time, 126 msg/s in batches of 8 and 91 msg/s in
+  batches of 32 (`results/load_test_direct_int8_b*.json`), because every message
+  in a batch is padded to the longest one. More throughput comes from more
+  processes or a GPU, not from batching.
 - **Threads vs processes.** Inference is CPU-bound Python, so request threads
   share one core under the GIL; throughput scales with worker processes, and
   each process holds its own copy of the model. That is cheap at 10 MB and
