@@ -1,5 +1,3 @@
-// ScamShield Frontend Application Logic
-// Preloaded examples representing multiple languages and scripts
 const EXAMPLES = [
     {
         label: "English Scam",
@@ -45,13 +43,10 @@ const EXAMPLES = [
 let currentMessageId = null;
 let tacticChartInstance = null;
 let langChartInstance = null;
-// Initialize App
 document.addEventListener("DOMContentLoaded", () => {
     populateExamples();
-    // Pre-initialize stats if tab is active (just in case)
     fetchStatsAndRenderCharts();
 });
-// Populate Example Pills
 function populateExamples() {
     const container = document.getElementById("example-container");
     container.innerHTML = "";
@@ -67,7 +62,6 @@ function populateExamples() {
         container.appendChild(pill);
     });
 }
-// Clipboard Paste
 async function pasteFromClipboard() {
     try {
         const text = await navigator.clipboard.readText();
@@ -78,7 +72,6 @@ async function pasteFromClipboard() {
         console.error("Failed to read clipboard: ", err);
     }
 }
-// Clear Input
 function clearInput() {
     document.getElementById("message-input").value = "";
     const resContainer = document.getElementById("result-container");
@@ -90,7 +83,6 @@ function clearInput() {
     emptyState.classList.remove("hide");
     currentMessageId = null;
 }
-// Submit Analysis
 async function submitAnalysis() {
     const text = document.getElementById("message-input").value.trim();
     if (!text) return;
@@ -99,7 +91,6 @@ async function submitAnalysis() {
     const btnText = document.getElementById("btn-text");
     const btnSpinner = document.getElementById("btn-spinner");
     
-    // Loading State
     submitBtn.disabled = true;
     btnText.style.opacity = "0.5";
     btnSpinner.style.display = "block";
@@ -125,7 +116,6 @@ async function submitAnalysis() {
         btnSpinner.style.display = "none";
     }
 }
-// Render Results
 function renderResults(originalText, data) {
     currentMessageId = data.message_id;
     
@@ -136,23 +126,18 @@ function renderResults(originalText, data) {
     emptyState.classList.add("hide");
     resDetails.classList.remove("hide");
     
-    // Set general card style based on prediction
     const isScam = data.label === "scam";
     resContainer.className = `card result-card ${isScam ? 'border-scam' : 'border-safe'}`;
     
-    // Set Badge
     const riskBadge = document.getElementById("risk-badge");
     riskBadge.textContent = isScam ? "SCAM FLAGGED" : "SAFE / TRUSTED";
     riskBadge.className = `badge ${isScam ? 'scam' : 'safe'}`;
     
-    // Set Language & Script Badge
     const langBadge = document.getElementById("meta-lang-badge");
     langBadge.textContent = `Language: ${data.language_detected} (Script: ${data.script_type})`;
     
-    // Set Message ID
     document.getElementById("msg-id-display").textContent = `ID: ${data.message_id.substring(0, 8)}`;
     
-    // Set Meter Bar
     const meterPercentage = document.getElementById("scam-percentage");
     const meterBar = document.getElementById("scam-meter-bar");
     const pct = Math.round(data.scam_probability * 100);
@@ -160,7 +145,6 @@ function renderResults(originalText, data) {
     meterPercentage.textContent = `${pct}%`;
     meterBar.style.width = `${pct}%`;
     
-    // Meter color shifting
     if (pct < 30) {
         meterBar.style.backgroundColor = "var(--color-safe)";
     } else if (pct < 70) {
@@ -168,7 +152,6 @@ function renderResults(originalText, data) {
     } else {
         meterBar.style.backgroundColor = "var(--color-danger)";
     }
-    // Set Tactics
     const tacticsSection = document.getElementById("detected-tactics-section");
     const tacticGrid = document.getElementById("tactic-grid");
     tacticGrid.innerHTML = "";
@@ -198,13 +181,11 @@ function renderResults(originalText, data) {
         tacticsSection.classList.add("hide");
     }
     
-    // Highlight Evidence in the Original Text Area and Set Explanation
     // NOTE: the message text and the evidence spans come from the sender, so they are
     // HTML-escaped before any markup is added. Escaping first means the <mark> tags
     // below are the only markup in the output and nothing a sender wrote can execute.
     let highlightedText = escapeHtml(originalText);
     if (isScam && data.tactics) {
-        // Find evidence phrases and wrap them with <mark>
         // Sort evidence by length descending to avoid nested replacement issues
         const uniqueEvidence = [...new Set(data.tactics.map(t => t.evidence))]
             .filter(e => e && e !== "suspicious phrasing")
@@ -220,16 +201,13 @@ function renderResults(originalText, data) {
             }
         });
     }
-    // Set Explanation Box Content
     const expBox = document.getElementById("explanation-box");
-    // Show highlighted message text followed by the generated plain-language text
     expBox.innerHTML = `
         <p class="highlighted-msg-preview"><strong>Input Preview:</strong> <em>${highlightedText}</em></p>
         <div class="explanation-paragraphs">
             ${escapeHtml(data.explanation).replace(/\n/g, "<br>")}
         </div>
     `;
-    // Reset feedback button state
     resetFeedbackButtons();
 }
 function escapeRegExp(string) {
@@ -243,7 +221,6 @@ function escapeHtml(string) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
 }
-// Send Feedback
 async function sendFeedback(correction) {
     if (!currentMessageId) return;
     
@@ -265,7 +242,6 @@ async function sendFeedback(correction) {
         
         if (response.ok) {
             showToast(`Feedback logged: marked as ${correction}`);
-            // Disable clicked option
             if (correction === "legit") {
                 legitBtn.classList.add("active-feedback");
                 legitBtn.textContent = "Safe Logged";
@@ -273,9 +249,16 @@ async function sendFeedback(correction) {
                 scamBtn.classList.add("active-feedback");
                 scamBtn.textContent = "Scam Logged";
             }
+        } else {
+            showToast("Could not record feedback. Please try again.");
+            legitBtn.disabled = false;
+            scamBtn.disabled = false;
         }
     } catch (err) {
         console.error("Feedback failed:", err);
+        showToast("Could not record feedback. Please try again.");
+        legitBtn.disabled = false;
+        scamBtn.disabled = false;
     }
 }
 function resetFeedbackButtons() {
@@ -305,28 +288,23 @@ function showToast(message) {
         toast.classList.remove("show");
     }, 3000);
 }
-// Tab Switching
 function switchTab(tabName) {
-    // Nav buttons active toggle
     const buttons = document.querySelectorAll(".nav-btn");
     buttons.forEach(btn => btn.classList.remove("active"));
     
     const activeBtn = document.getElementById(`tab-${tabName}-btn`);
     if (activeBtn) activeBtn.classList.add("active");
     
-    // Panel display toggle
     const panels = document.querySelectorAll(".tab-panel");
     panels.forEach(panel => panel.classList.remove("active"));
     
     const activePanel = document.getElementById(`tab-${tabName}`);
     if (activePanel) activePanel.classList.add("active");
     
-    // Refresh stats if stats tab is opened
     if (tabName === "stats") {
         fetchStatsAndRenderCharts();
     }
 }
-// Fetch stats and render charts
 async function fetchStatsAndRenderCharts() {
     try {
         const response = await fetch("/api/stats");
@@ -334,38 +312,31 @@ async function fetchStatsAndRenderCharts() {
         
         const stats = await response.json();
         
-        // Update overview cards
         document.getElementById("stat-total").textContent = stats.total_analyzed || 0;
         document.getElementById("stat-scams").textContent = (stats.label_distribution && stats.label_distribution.scam) || 0;
         document.getElementById("stat-legit").textContent = (stats.label_distribution && stats.label_distribution.legit) || 0;
         document.getElementById("stat-feedback").textContent = stats.feedback_received || 0;
         
-        // Update Web vs. SMS breakdown
         if (stats.source_distribution) {
             document.getElementById("stat-web").textContent = stats.source_distribution.web || 0;
             document.getElementById("stat-sms").textContent = stats.source_distribution.sms || 0;
         }
         
-        // Render Tactic Chart
         renderTacticChart(stats.tactic_distribution || {});
         
-        // Render Language Chart
         renderLanguageChart(stats.language_distribution || {});
         
-        // Render Script Breakdown Bar
         renderScriptBreakdown(stats.script_distribution || {});
     } catch (err) {
         console.error("Failed to load dashboard statistics:", err);
     }
 }
-// Render Tactic Frequency Chart (Horizontal Bar Chart)
 function renderTacticChart(data) {
     const ctx = document.getElementById("tacticChart").getContext("2d");
     
     const labels = Object.keys(data);
     const counts = Object.values(data);
     
-    // Set fallback sample if no entries exist
     const displayLabels = labels.length > 0 ? labels : ["Urgency", "Authority Impersonation", "False Reward", "Loss Aversion", "Phishing", "Suspicious Link"];
     const displayCounts = counts.length > 0 ? counts : [0, 0, 0, 0, 0, 0];
     
@@ -406,7 +377,6 @@ function renderTacticChart(data) {
         }
     });
 }
-// Render Language Distribution Chart (Doughnut Chart)
 function renderLanguageChart(data) {
     const ctx = document.getElementById("langChart").getContext("2d");
     
@@ -414,7 +384,7 @@ function renderLanguageChart(data) {
     const counts = Object.values(data);
     
     const displayLabels = labels.length > 0 ? labels : ["English", "Hindi", "Tamil", "Telugu", "Bengali"];
-    const displayCounts = counts.length > 0 ? counts : [1, 0, 0, 0, 0]; // default showing English to keep shape
+    const displayCounts = counts.length > 0 ? counts : [0, 0, 0, 0, 0];
     
     if (langChartInstance) {
         langChartInstance.destroy();
@@ -455,7 +425,6 @@ function renderLanguageChart(data) {
         }
     });
 }
-// Render Script Segment bar
 function renderScriptBreakdown(data) {
     const bar = document.getElementById("script-breakdown-bar");
     const labelContainer = document.getElementById("script-labels");
@@ -475,7 +444,6 @@ function renderScriptBreakdown(data) {
         const count = data[cat.key] || 0;
         const pct = total > 0 ? (count / total) * 100 : 0;
         
-        // Add bar segment if pct > 0
         if (pct > 0 || (total === 0 && cat.key === "Latin")) {
             const displayPct = total === 0 ? 100 : pct;
             const segment = document.createElement("div");
@@ -485,7 +453,6 @@ function renderScriptBreakdown(data) {
             bar.appendChild(segment);
         }
         
-        // Add Label Item
         const labelItem = document.createElement("div");
         labelItem.className = "script-label-item";
         labelItem.innerHTML = `
