@@ -1,33 +1,31 @@
 import logging
 import os
-import sys
 import threading
 import time
 from typing import Dict
-# Add local target library directory to sys.path to resolve packages on Windows
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "lib")))
+
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
-from twilio.twiml.messaging_response import MessagingResponse
 from twilio.request_validator import RequestValidator
-# Load environment configurations
+from twilio.twiml.messaging_response import MessagingResponse
+
+# The modules imported below read the environment at import time, so .env loads first.
 load_dotenv()
 from src.observability import MODEL_INFO, RequestContextMiddleware, configure_logging, request_id_var
 
 configure_logging(os.getenv("LOG_LEVEL", "INFO"))
 log = logging.getLogger("scamshield.api")
 
+from src.database import get_stats, init_db, save_feedback
 from src.inference import ScamShieldInference
-from src.database import init_db, save_feedback, get_stats
-# Initialize Database on startup
+
 init_db()
-# Twilio signature validation credentials.
 # Validation is ON by default. Set SKIP_TWILIO_VALIDATION=true only for local
 # testing without ngrok; a deployed webhook that skips validation lets anyone
 # POST forged messages and read the analysis response.
@@ -70,7 +68,6 @@ def internal_error(what: str) -> HTTPException:
     log.exception(what)
     return HTTPException(status_code=500, detail=f"{what}. Quote request ID {request_id_var.get()} when reporting it.")
 
-# Initialize Inference Engine
 analyzer = ScamShieldInference()
 MODEL_INFO.labels(analyzer.model_name).set(1)
 log.info("model loaded", extra={"model": analyzer.model_name})
@@ -79,7 +76,6 @@ app = FastAPI(
     description="Regional-Language UPI/Payment Scam Detector with Tactic Explainer",
     version="1.0.0"
 )
-# CORS restricted to configured origins (the dashboard is same-origin).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -88,7 +84,6 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 app.add_middleware(RequestContextMiddleware)
-# Request Models
 class AnalyzeRequest(BaseModel):
     text: str = Field(..., description="Suspected scam message text", min_length=2, max_length=MAX_MESSAGE_CHARS)
 class FeedbackRequest(BaseModel):
@@ -112,18 +107,16 @@ async def twilio_sms_webhook(request: Request):
     if not body:
         raise HTTPException(status_code=400, detail="Missing Body parameter")
         
-    # Signature Verification (Skip on local testing)
     if not SKIP_TWILIO_VALIDATION:
         signature = request.headers.get("x-twilio-signature")
         if not signature:
             raise HTTPException(status_code=403, detail="Missing X-Twilio-Signature header")
             
-        # Proxy URL Reconstruction for ngrok compatibility
+        # Twilio signs the public URL; behind a proxy (ngrok, Render) rebuild it from the forwarded headers.
         forwarded_proto = request.headers.get("x-forwarded-proto", "http")
         forwarded_host = request.headers.get("x-forwarded-host", request.url.netloc)
         url = f"{forwarded_proto}://{forwarded_host}{request.url.path}"
         
-        # Convert form attributes to dict
         params = {k: v for k, v in form_data.items()}
         
         validator = RequestValidator(TWILIO_AUTH_TOKEN)
@@ -133,7 +126,6 @@ async def twilio_sms_webhook(request: Request):
     try:
         result = await run_in_threadpool(analyzer.analyze, body[:MAX_MESSAGE_CHARS], "sms")
         
-        # Construct reply message (strictly capped at 320 characters)
         prob = int(result["scam_probability"] * 100)
         
         if result["label"] == "scam":
@@ -146,11 +138,10 @@ async def twilio_sms_webhook(request: Request):
         else:
             reply_text = f"✅ This message looks safe ({prob}% scam confidence)."
             
-        # Guard rails for length limit (2 SMS segments maximum)
+        # 320 characters is two SMS segments.
         if len(reply_text) > 320:
             reply_text = reply_text[:317] + "..."
             
-        # Build TwiML MessagingResponse XML
         response = MessagingResponse()
         response.message(reply_text)
         
@@ -191,7 +182,6 @@ def get_stats_endpoint():
         return get_stats()
     except Exception:
         raise internal_error("Could not read statistics")
-# Mount static files for the web interface
 os.makedirs("static", exist_ok=True)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 if __name__ == "__main__":

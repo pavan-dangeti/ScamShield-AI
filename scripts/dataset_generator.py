@@ -1,9 +1,10 @@
-import os
 import csv
 import json
+import os
 import random
 import uuid
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 # Placeholders for dynamic content generation
 BANKS = ["SBI", "HDFC", "ICICI", "Axis Bank", "PNB", "Paytm Bank"]
 AMOUNTS = ["₹5,000", "₹10,000", "₹25,000", "₹1,999", "₹15,499", "₹9,999", "₹4,999"]

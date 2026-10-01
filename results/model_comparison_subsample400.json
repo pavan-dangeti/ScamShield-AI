@@ -1,0 +1,300 @@
+{
+  "generated_at": "2026-09-29T18:07:45.086471+00:00",
+  "split": "val",
+  "subsample": 400,
+  "seed": 42,
+  "rows": 354,
+  "results": [
+    {
+      "model": "llm-0shot",
+      "threshold": 0.5,
+      "rows": 354,
+      "scam_support": 180,
+      "precision": 0.5329341317365269,
+      "recall": 0.9888888888888889,
+      "f1": 0.6926070038910506,
+      "roc_auc": 0.5461685823754789,
+      "by_cell": {
+        "bengali|native": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.4878048780487805,
+          "recall": 0.9090909090909091,
+          "f1": 0.6349206349206349,
+          "roc_auc": 0.47727272727272724
+        },
+        "bengali|romanized": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.5641025641025641,
+          "recall": 1.0,
+          "f1": 0.7213114754098361,
+          "roc_auc": 0.6136363636363636
+        },
+        "english|latin": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.6875,
+          "recall": 1.0,
+          "f1": 0.8148148148148148,
+          "roc_auc": 0.7727272727272727
+        },
+        "hindi|native": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "roc_auc": 0.5
+        },
+        "hindi|romanized": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "roc_auc": 0.5
+        },
+        "tamil|native": {
+          "rows": 32,
+          "scam_rows": 15,
+          "precision": 0.46875,
+          "recall": 1.0,
+          "f1": 0.6382978723404256,
+          "roc_auc": 0.5
+        },
+        "tamil|romanized": {
+          "rows": 38,
+          "scam_rows": 20,
+          "precision": 0.5263157894736842,
+          "recall": 1.0,
+          "f1": 0.6896551724137931,
+          "roc_auc": 0.5
+        },
+        "telugu|native": {
+          "rows": 24,
+          "scam_rows": 13,
+          "precision": 0.5416666666666666,
+          "recall": 1.0,
+          "f1": 0.7027027027027027,
+          "roc_auc": 0.5
+        },
+        "telugu|romanized": {
+          "rows": 40,
+          "scam_rows": 22,
+          "precision": 0.55,
+          "recall": 1.0,
+          "f1": 0.7096774193548387,
+          "roc_auc": 0.5
+        }
+      },
+      "tactics": {
+        "labelled_rows": 128,
+        "macro_f1": 0.09188034188034189,
+        "micro_f1": 0.2198581560283688,
+        "per_tactic_f1": {
+          "urgency": 0.38461538461538464,
+          "authority_impersonation": 0.0,
+          "false_reward": 0.0,
+          "loss_aversion": 0.0,
+          "credential_phishing": 0.0,
+          "suspicious_link": 0.16666666666666666
+        }
+      }
+    },
+    {
+      "model": "llm-3shot",
+      "threshold": 0.5,
+      "rows": 354,
+      "scam_support": 180,
+      "precision": 0.569620253164557,
+      "recall": 1.0,
+      "f1": 0.7258064516129032,
+      "roc_auc": 0.6091954022988506,
+      "by_cell": {
+        "bengali|native": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.5116279069767442,
+          "recall": 1.0,
+          "f1": 0.676923076923077,
+          "roc_auc": 0.5227272727272727
+        },
+        "bengali|romanized": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.6666666666666666,
+          "recall": 1.0,
+          "f1": 0.8,
+          "roc_auc": 0.75
+        },
+        "english|latin": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.7857142857142857,
+          "recall": 1.0,
+          "f1": 0.88,
+          "roc_auc": 0.8636363636363636
+        },
+        "hindi|native": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "roc_auc": 0.5
+        },
+        "hindi|romanized": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.55,
+          "recall": 1.0,
+          "f1": 0.7096774193548387,
+          "roc_auc": 0.5909090909090908
+        },
+        "tamil|native": {
+          "rows": 32,
+          "scam_rows": 15,
+          "precision": 0.46875,
+          "recall": 1.0,
+          "f1": 0.6382978723404256,
+          "roc_auc": 0.5
+        },
+        "tamil|romanized": {
+          "rows": 38,
+          "scam_rows": 20,
+          "precision": 0.6060606060606061,
+          "recall": 1.0,
+          "f1": 0.7547169811320755,
+          "roc_auc": 0.6388888888888888
+        },
+        "telugu|native": {
+          "rows": 24,
+          "scam_rows": 13,
+          "precision": 0.5416666666666666,
+          "recall": 1.0,
+          "f1": 0.7027027027027027,
+          "roc_auc": 0.5
+        },
+        "telugu|romanized": {
+          "rows": 40,
+          "scam_rows": 22,
+          "precision": 0.5641025641025641,
+          "recall": 1.0,
+          "f1": 0.7213114754098361,
+          "roc_auc": 0.5277777777777778
+        }
+      },
+      "tactics": {
+        "labelled_rows": 128,
+        "macro_f1": 0.40304921188526904,
+        "micro_f1": 0.5015873015873016,
+        "per_tactic_f1": {
+          "urgency": 0.7450980392156863,
+          "authority_impersonation": 0.1875,
+          "false_reward": 0.8817204301075269,
+          "loss_aversion": 0.0,
+          "credential_phishing": 0.29411764705882354,
+          "suspicious_link": 0.30985915492957744
+        }
+      }
+    },
+    {
+      "model": "lora-SmolLM2-135M-Instruct",
+      "threshold": 0.5,
+      "rows": 354,
+      "scam_support": 180,
+      "precision": 0.959731543624161,
+      "recall": 0.7944444444444444,
+      "f1": 0.8693009118541033,
+      "roc_auc": 0.8799808429118774,
+      "by_cell": {
+        "bengali|native": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.8947368421052632,
+          "recall": 0.7727272727272727,
+          "f1": 0.8292682926829268,
+          "roc_auc": 0.8409090909090909
+        },
+        "bengali|romanized": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 0.875,
+          "recall": 0.9545454545454546,
+          "f1": 0.9130434782608695,
+          "roc_auc": 0.9090909090909092
+        },
+        "english|latin": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 1.0,
+          "recall": 0.9545454545454546,
+          "f1": 0.9767441860465116,
+          "roc_auc": 0.9772727272727273
+        },
+        "hindi|native": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 1.0,
+          "recall": 0.2727272727272727,
+          "f1": 0.42857142857142855,
+          "roc_auc": 0.6363636363636364
+        },
+        "hindi|romanized": {
+          "rows": 44,
+          "scam_rows": 22,
+          "precision": 1.0,
+          "recall": 0.6818181818181818,
+          "f1": 0.8108108108108109,
+          "roc_auc": 0.8409090909090908
+        },
+        "tamil|native": {
+          "rows": 32,
+          "scam_rows": 15,
+          "precision": 1.0,
+          "recall": 0.5333333333333333,
+          "f1": 0.6956521739130435,
+          "roc_auc": 0.7666666666666666
+        },
+        "tamil|romanized": {
+          "rows": 38,
+          "scam_rows": 20,
+          "precision": 0.9523809523809523,
+          "recall": 1.0,
+          "f1": 0.975609756097561,
+          "roc_auc": 0.9722222222222222
+        },
+        "telugu|native": {
+          "rows": 24,
+          "scam_rows": 13,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "roc_auc": 1.0
+        },
+        "telugu|romanized": {
+          "rows": 40,
+          "scam_rows": 22,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "roc_auc": 1.0
+        }
+      },
+      "tactics": {
+        "labelled_rows": 128,
+        "macro_f1": 0.18215483455463663,
+        "micro_f1": 0.18726591760299627,
+        "per_tactic_f1": {
+          "urgency": 0.19148936170212766,
+          "authority_impersonation": 0.3333333333333333,
+          "false_reward": 0.046511627906976744,
+          "loss_aversion": 0.09302325581395349,
+          "credential_phishing": 0.0,
+          "suspicious_link": 0.42857142857142855
+        }
+      }
+    }
+  ]
+}

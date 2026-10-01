@@ -77,7 +77,7 @@ The file must follow this schema:
 - **`legit_templates`**: Safe transaction alerts and OTP notification templates.
 ---
 ## Step 2: Register Script Ranges (If using a new Native Script)
-If the language uses a script not already supported by the detector, register its Unicode ranges inside [src/detector.py](file:///d:/projects/antigravity%20projects/src/detector.py):
+If the language uses a script not already supported by the detector, register its Unicode ranges inside [`src/detector.py`](../src/detector.py):
 1. **Find the Unicode Block**: Look up the official Unicode block range for the script (e.g., Kannada is `0x0C80` to `0x0CFF`).
 2. **Add to `UNICODE_RANGES`**:
    ```python
@@ -94,18 +94,20 @@ If the language uses a script not already supported by the detector, register it
    }
    ```
 ---
-## Step 3: Regenerate Dataset and Retrain
-Once the language pack is created and registered, run the automation commands from the project root:
-1. **Regenerate the CSV Dataset**:
+## Step 3: Rebuild the Corpus and Retrain
+From the project root:
+1. **Rebuild the corpus.** `build_dataset` expands every language pack's templates (through `scripts/dataset_generator.py`), merges them with the licence-checked sources, scrubs, de-duplicates and splits:
    ```bash
-   python scripts/dataset_generator.py
+   python -m scripts.build_dataset
+   python -m scripts.check_leakage
    ```
-   The generator will automatically pick up the new JSON pack, load its templates, fill in placeholders, and output an expanded training set to `data/scam_dataset.csv`.
-2. **Retrain Classifiers & Re-evaluate**:
+2. **Retrain the baseline**, which writes `models/tfidf-lr.pkl`:
    ```bash
-   python src/train.py
+   python -m scripts.train_tfidf
    ```
-   The training pipeline will vectorize the expanded dataset, train new binary and tactic logistic regression heads, and save the updated pickle models under `models/`.
 ---
 ## Step 4: Verify the Performance
-Open [models/metrics_report.md](file:///d:/projects/antigravity%20projects/models/metrics_report.md) to review the training split validation results. Under the **Performance Breakdown by Language and Script** section, you should see your new language listed along with its native and romanized sub-accuracy scores (Precision, Recall, F1).
+```bash
+python -m scripts.evaluate_with_ci --models tfidf-lr
+```
+This reports precision, recall and F1 with bootstrap confidence intervals for every language and script cell, so the new language appears as its own native and romanised rows. Expect wide intervals until the language has real, hand-labelled test messages (see `docs/labeling_guidelines.md`); template-only numbers measure template recall, not real-world accuracy.

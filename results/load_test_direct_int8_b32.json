@@ -1,0 +1,10 @@
+{
+  "mode": "direct",
+  "model": "xlmr-aug-int8",
+  "messages": 2000,
+  "batch_size": 32,
+  "seconds": 22.0,
+  "messages_per_second": 90.9,
+  "mean_batch_ms": 349.22,
+  "p95_batch_ms": 559.01
+}

@@ -14,14 +14,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import random
-import sys
 
 import numpy as np
 from sklearn.metrics import brier_score_loss, f1_score, precision_score, recall_score
 
 from src.data import load_split, subsample_rows
-from src.taxonomy import TACTICS
 
 RESULTS_DIR = "results"
 

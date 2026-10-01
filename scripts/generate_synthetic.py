@@ -281,7 +281,7 @@ def main() -> None:
                 jobs = [("scam", topic) for topic in SCAM_TOPICS for _ in range(args.scams_per_cell // len(SCAM_TOPICS) + 1)]
                 jobs += [("legit", topic) for topic in LEGIT_TOPICS for _ in range(args.legit_per_cell // len(LEGIT_TOPICS) + 1)]
                 for label, topic in jobs:
-                    for attempt in range(args.max_attempts):
+                    for _ in range(args.max_attempts):
                         prompt = (build_scam_prompt if label == "scam" else build_legit_prompt)(
                             language, script, topic
                         )

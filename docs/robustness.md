@@ -78,10 +78,11 @@ The accuracy gain is the interesting part and it is slightly counter-intuitive:
 perturbing training text acts as a regulariser, so the model stops leaning on single
 surface tokens and generalises slightly better even before any attack arrives.
 
-**Cost: none at inference.** The augmented baseline is a retrained model, not extra
-machinery - 1.95 ms p50 on CPU, identical to the un-augmented 1.96 ms, same 10.2 MB
-artefact. Robustness here is free, which is the argument for baking it into training
-rather than bolting on a normalisation layer later.
+**Cost: no extra latency.** The augmented baseline is a retrained model, not extra
+machinery - 0.52 ms p50 on CPU against 0.51 ms un-augmented (`results/latency.json`).
+The artefact grows from 10.2 MB to 16.6 MB, because perturbed training text adds
+character n-grams to the vocabulary. That is the whole price, which is the argument
+for baking robustness into training rather than bolting on a normalisation layer.
 
 ## 4. What this does not prove
 

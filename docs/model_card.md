@@ -28,9 +28,10 @@ Validation split, 1,554 rows, threshold 0.5, from
 | Expected calibration error | 0.0016 |
 | Tactic macro-F1 | 0.987 (230 rows with tactic labels) |
 | Worst adversarial attack (spacing) | F1 0.985, mean flip rate 0.003 |
-| CPU latency (ONNX int8) | 6.1 ms p50, 14.5 ms p95 |
-| Throughput (batch 32, 1 process) | 85 msg/s |
+| CPU latency (ONNX int8, one message) | 4.44 ms p50, 9.72 ms p95 (`results/latency.json`) |
+| Throughput (1 process, one message at a time) | 178 msg/s; 91 msg/s in batches of 32 (`results/load_test_direct_int8_b*.json`) |
 | Artefact | 278 MB int8 ONNX |
+| Server memory with this model loaded | ~1.1 GB, so it does not fit a 512 MB free tier |
 
 Under a 10:1 cost of a missed scam to a false alarm, the cost-optimal threshold is
 0.75, which is also the best-F1 threshold for this model. The full threshold sweep

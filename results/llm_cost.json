@@ -1,0 +1,29 @@
+{
+  "shots": 3,
+  "model": "mlx-community/Qwen2.5-7B-Instruct-4bit",
+  "measured_per_message": {
+    "input_tokens": 440,
+    "output_tokens": 13,
+    "seconds": 3.61
+  },
+  "per_1000_messages": {
+    "input_tokens": 440000,
+    "output_tokens": 13000,
+    "total_tokens": 453000
+  },
+  "local": {
+    "usd_per_1000_messages": 0.0038,
+    "kwh_per_1000_messages": 0.02507,
+    "minutes_per_1000_messages": 60.2,
+    "assumptions": {
+      "watts_while_generating": 25.0,
+      "usd_per_kwh": 0.15,
+      "note": "one machine, no API spend; the currency is time and electricity"
+    }
+  },
+  "api": {
+    "usd_per_1000_messages": 0.1359,
+    "price_per_million_usd": 0.3,
+    "note": "arithmetic on the measured token counts; this script makes no API call"
+  }
+}

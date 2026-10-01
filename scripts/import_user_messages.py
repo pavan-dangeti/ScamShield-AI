@@ -32,8 +32,8 @@ import pandas as pd
 
 from scripts.build_dataset import normalize_text
 from scripts.make_test_candidates import CANDIDATE_DIR, USER_IMPORT
-from src.pii import scrub_text
 from src.detector import ScriptLanguageDetector
+from src.pii import scrub_text
 
 LANGUAGES = ("english", "hindi", "tamil", "telugu", "bengali")
 SCRIPTS = ("native", "romanized", "latin")

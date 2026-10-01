@@ -22,6 +22,10 @@ jobs:
         run: pip install -r requirements-dev.txt
       - name: Unit tests
         run: python -m pytest tests/ -q
+      - name: Lint and dead-code check
+        run: |
+          ruff check src scripts tests
+          vulture src scripts tests --min-confidence 80
       - name: Type check
         run: python -m mypy --explicit-package-bases --namespace-packages src scripts tests
 

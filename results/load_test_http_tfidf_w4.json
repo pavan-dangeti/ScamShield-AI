@@ -1,0 +1,47 @@
+[
+  {
+    "mode": "http",
+    "url": "http://127.0.0.1:8011/api/analyze",
+    "concurrency": 1,
+    "messages": 3000,
+    "seconds": 4.91,
+    "requests_per_second": 610.8,
+    "p50_ms": 1.52,
+    "p95_ms": 2.38,
+    "p99_ms": 3.13,
+    "error_rate": 0.0,
+    "status_counts": {
+      "200": 3000
+    }
+  },
+  {
+    "mode": "http",
+    "url": "http://127.0.0.1:8011/api/analyze",
+    "concurrency": 8,
+    "messages": 3000,
+    "seconds": 2.4,
+    "requests_per_second": 1250.0,
+    "p50_ms": 3.23,
+    "p95_ms": 21.26,
+    "p99_ms": 62.47,
+    "error_rate": 0.0,
+    "status_counts": {
+      "200": 3000
+    }
+  },
+  {
+    "mode": "http",
+    "url": "http://127.0.0.1:8011/api/analyze",
+    "concurrency": 32,
+    "messages": 3000,
+    "seconds": 2.48,
+    "requests_per_second": 1209.5,
+    "p50_ms": 5.02,
+    "p95_ms": 96.66,
+    "p99_ms": 460.28,
+    "error_rate": 0.0,
+    "status_counts": {
+      "200": 3000
+    }
+  }
+]

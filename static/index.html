@@ -113,7 +113,7 @@
                             </div>
                         </div>
                         <!-- Feedback Section -->
-                        <div class="feedback-section" id="feedback-controls">
+                        <div class="feedback-section">
                             <span>Is this result wrong? Help improve the detector:</span>
                             <div class="feedback-buttons">
                                 <button class="feedback-btn feedback-legit" onclick="sendFeedback('legit')">
@@ -234,14 +234,14 @@
             </div>
             <div class="card doc-card border-glow">
                 <h2>Extending ScamShield to New Languages</h2>
-                <p>Adding support for a new language requires zero code modifications. Follow these brief steps:</p>
+                <p>A language whose script is already detected needs no code changes, only a JSON language pack:</p>
                 <ol>
-                    <li>Create a JSON language pack named <code>&lt;language&gt;.json</code> under the <code>data/language_packs/</code> directory.</li>
-                    <li>Define the <code>language_name</code>, <code>romanized_words</code> (common transliterated terms), <code>tactic_templates</code> (scam sentences for each tactic in native & romanized), and <code>legit_templates</code>.</li>
-                    <li>Update the Unicode script range mapping inside <a href="file:///d:/projects/antigravity projects/src/detector.py">detector.py</a> if the language uses a new native script.</li>
-                    <li>Run <a href="file:///d:/projects/antigravity projects/src/dataset_generator.py">dataset_generator.py</a> and <a href="file:///d:/projects/antigravity projects/src/train.py">train.py</a> to retrain the models with the new samples automatically.</li>
+                    <li>Create <code>&lt;language&gt;.json</code> under <code>data/language_packs/</code>.</li>
+                    <li>Define the <code>language_name</code>, <code>romanized_words</code> (common transliterated terms), <code>tactic_templates</code> (scam sentences for each tactic in native &amp; romanized), and <code>legit_templates</code>.</li>
+                    <li>For a new native script, add its Unicode range to <a href="https://github.com/pavan-dangeti/ScamShield-AI/blob/main/src/detector.py">detector.py</a>.</li>
+                    <li>Rebuild the corpus and retrain: <code>python -m scripts.build_dataset</code> then <code>python -m scripts.train_tfidf</code>.</li>
                 </ol>
-                <p>For more detailed information, see the <a href="file:///d:/projects/antigravity projects/docs/adding_a_language.md">Adding a Language Guide</a>.</p>
+                <p>For more detail, see the <a href="https://github.com/pavan-dangeti/ScamShield-AI/blob/main/docs/adding_a_language.md">Adding a Language guide</a>.</p>
             </div>
         </section>
     </main>

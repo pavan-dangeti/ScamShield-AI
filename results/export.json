@@ -1,0 +1,19 @@
+{
+  "model": "xlm-roberta-base-aug",
+  "onnx_mb": 1110.1,
+  "fp32_torch_mb": 1129.4,
+  "accuracy_split": "val (1554 rows)",
+  "latency_sample": 200,
+  "fp32_onnx_latency": {
+    "p50_ms": 6.25,
+    "p95_ms": 11.07
+  },
+  "fp32_onnx_f1_full_val": 0.998019801980198,
+  "int8_mb": 278.3,
+  "int8_latency": {
+    "p50_ms": 6.09,
+    "p95_ms": 14.48
+  },
+  "int8_f1_full_val": 0.998019801980198,
+  "int8_path": "models/onnx/xlm-roberta-base-aug/model.int8.onnx"
+}
