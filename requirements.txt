@@ -1,5 +1,5 @@
 # Runtime dependencies, pinned so every deploy and CI run installs the same
-# versions. Dependabot proposes upgrades as pull requests; CI must pass first.
+# versions. Upgrade deliberately, in a pull request that passes CI.
 pandas==3.0.6
 scikit-learn==1.9.1
 numpy==2.4.6
