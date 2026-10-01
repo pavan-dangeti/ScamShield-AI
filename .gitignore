@@ -45,5 +45,4 @@ data/test_candidates/labels.jsonl
 # outputs contain message text and stay local.
 results/*.jsonl
 results/drift.json
-docs/demo/*.mp4
 .playwright-mcp/

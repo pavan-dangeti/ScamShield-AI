@@ -17,6 +17,8 @@ handle poorly.
 
 ![Demo: an English scam flagged with its tactics and evidence, a bank alert passing, Tanglish and Hindi scams detected in their own script, and the dashboard](docs/demo/scamshield_demo.gif)
 
+[Watch the demo as video (MP4, 40 s)](docs/demo/scamshield_demo.mp4) · [Screenshots](#screenshots)
+
 > **Status.** All accuracy figures below are measured on a held-out validation split
 > of a corpus that is largely synthetic or of unverified provenance. A hand-labelled
 > test set of real messages is in progress. Until it is frozen, treat these numbers as
@@ -276,9 +278,23 @@ Neural models need `requirements-ml.txt`; training commands are in
 | `/api/health` | GET | Liveness and the model currently serving |
 | `/metrics` | GET | Prometheus metrics |
 
-| WhatsApp integration | Interactive API reference |
+## Screenshots
+
+Captured from the running application by `scripts/record_demo.py` in the same session
+as the demo video.
+
+| Scam in English: tactics, evidence and explanation | Legitimate bank alert |
 |---|---|
-| ![A scam forwarded over WhatsApp and ScamShield's reply](screenshots/screenshots_whatsapp_demo.png) | ![Swagger UI](screenshots/screenshots_swagger.png) |
+| ![English scam result](docs/screenshots/02_english_scam.png) | ![Legitimate alert result](docs/screenshots/03_legitimate_alert.png) |
+| **Romanised Tamil (Tanglish) scam** | **Hindi scam in Devanagari** |
+| ![Tanglish scam result](docs/screenshots/04_tanglish_scam.png) | ![Hindi scam result](docs/screenshots/05_hindi_scam.png) |
+| **Analytics dashboard** | **Interactive API reference** |
+| ![Dashboard](docs/screenshots/06_dashboard.png) | ![API reference](docs/screenshots/07_api_reference.png) |
+
+**WhatsApp.** A scam forwarded to the Twilio sandbox number and ScamShield's reply,
+captured on a phone (the one image the script cannot regenerate):
+
+<img src="docs/screenshots/08_whatsapp_reply.png" alt="A scam forwarded over WhatsApp and ScamShield's reply" width="320">
 
 ## Limitations
 

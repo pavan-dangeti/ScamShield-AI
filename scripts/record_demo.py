@@ -7,8 +7,9 @@ what the demo does:
     uv run --no-project --with playwright --with imageio-ffmpeg \\
         python -m scripts.record_demo --url http://127.0.0.1:8000
 
-Writes ``docs/demo/scamshield_demo.mp4`` (full quality, attached to releases)
-and ``docs/demo/scamshield_demo.gif`` (for the README, kept under 10 MB).
+Writes ``docs/demo/scamshield_demo.mp4`` (full quality),
+``docs/demo/scamshield_demo.gif`` (for the README, kept under 10 MB) and the
+screenshots in ``docs/screenshots/``, all from the same browser session.
 Neither tool is a project dependency; ``uv run --with`` fetches them for the run.
 """
 
@@ -27,35 +28,41 @@ ENGLISH_SCAM = (
 )
 
 
-def drive(page, url: str) -> None:
+def drive(page, url: str, shots: str) -> None:
     def pause(seconds: float) -> None:
         page.wait_for_timeout(int(seconds * 1000))
 
-    def analyze() -> None:
+    def shot(name: str) -> None:
+        page.screenshot(path=os.path.join(shots, f"{name}.png"), full_page=True)
+
+    def analyze(name: str) -> None:
         page.click("#analyze-submit-btn")
         page.wait_for_selector("#result-details:not(.hide)")
         pause(1.0)
+        shot(name)
         page.locator("#explanation-box").scroll_into_view_if_needed()
         pause(4.0)
         page.evaluate("window.scrollTo({top: 0, behavior: 'smooth'})")
         pause(1.0)
 
-    def example(label: str) -> None:
+    def example(label: str, name: str) -> None:
         page.get_by_role("button", name=label, exact=True).click()
         pause(1.2)
-        analyze()
+        analyze(name)
 
     page.goto(url)
     pause(2.0)
+    shot("01_home")
     page.click("#message-input")
     page.keyboard.type(ENGLISH_SCAM, delay=28)
     pause(0.8)
-    analyze()
-    example("Legit Bank SMS")
-    example("Tanglish Scam")
-    example("Hindi Scam")
+    analyze("02_english_scam")
+    example("Legit Bank SMS", "03_legitimate_alert")
+    example("Tanglish Scam", "04_tanglish_scam")
+    example("Hindi Scam", "05_hindi_scam")
     page.click("#tab-stats-btn")
     pause(5.0)
+    shot("06_dashboard")
 
 
 def encode(ffmpeg: str, webm: str, mp4: str, gif: str) -> None:
@@ -87,14 +94,23 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://127.0.0.1:8000")
     parser.add_argument("--out-dir", default="docs/demo")
+    parser.add_argument("--screenshot-dir", default="docs/screenshots")
     args = parser.parse_args()
 
     with tempfile.TemporaryDirectory() as video_dir, sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         size = {"width": 1280, "height": 800}
         context = browser.new_context(viewport=size, record_video_dir=video_dir, record_video_size=size)
-        drive(context.new_page(), args.url)
+        os.makedirs(args.screenshot_dir, exist_ok=True)
+        drive(context.new_page(), args.url, args.screenshot_dir)
         context.close()
+        # A separate, unrecorded context, so the demo video holds only the UI walkthrough.
+        api_context = browser.new_context(viewport=size)
+        api_page = api_context.new_page()
+        api_page.goto(args.url.rstrip("/") + "/docs")
+        api_page.wait_for_selector(".opblock")
+        api_page.screenshot(path=os.path.join(args.screenshot_dir, "07_api_reference.png"))
+        api_context.close()
         browser.close()
         webm = glob.glob(os.path.join(video_dir, "*.webm"))[0]
         os.makedirs(args.out_dir, exist_ok=True)
