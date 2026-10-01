@@ -1,9 +1,10 @@
-import sqlite3
-import os
 import json
 import logging
+import os
+import sqlite3
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 DB_PATH = "data/feedback.db"
 def get_db_connection():
     """Returns a connection to the SQLite database."""
@@ -88,19 +89,14 @@ def get_stats() -> Dict[str, Any]:
     """Queries and returns aggregated stats from database."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    # 1. Total count
     cursor.execute("SELECT COUNT(*) as count FROM analysis_logs")
     total_count = cursor.fetchone()["count"]
-    # 2. Predicted label distribution
     cursor.execute("SELECT predicted_label, COUNT(*) as count FROM analysis_logs GROUP BY predicted_label")
     label_dist = {row["predicted_label"]: row["count"] for row in cursor.fetchall()}
-    # 3. Language distribution
     cursor.execute("SELECT language, COUNT(*) as count FROM analysis_logs GROUP BY language")
     lang_dist = {row["language"].title(): row["count"] for row in cursor.fetchall()}
-    # 4. Script distribution
     cursor.execute("SELECT script, COUNT(*) as count FROM analysis_logs GROUP BY script")
     script_dist = {row["script"].title(): row["count"] for row in cursor.fetchall()}
-    # 5. Tactic distribution
     cursor.execute("SELECT detected_tactics FROM analysis_logs WHERE predicted_label = 'scam'")
     tactic_counts: Dict[str, int] = {}
     rows = cursor.fetchall()
@@ -109,10 +105,8 @@ def get_stats() -> Dict[str, Any]:
         for tactic in tactics:
             t_display = tactic.replace("_", " ").title()
             tactic_counts[t_display] = tactic_counts.get(t_display, 0) + 1
-    # 6. Feedback corrections count
     cursor.execute("SELECT COUNT(*) as count FROM analysis_logs WHERE user_correction IS NOT NULL")
     feedback_count = cursor.fetchone()["count"]
-    # 7. Source breakdown (Web vs. SMS)
     cursor.execute("SELECT source, COUNT(*) as count FROM analysis_logs GROUP BY source")
     source_dist = {row["source"].lower(): row["count"] for row in cursor.fetchall()}
     source_dist = {
@@ -129,16 +123,3 @@ def get_stats() -> Dict[str, Any]:
         "feedback_received": feedback_count,
         "source_distribution": source_dist
     }
-if __name__ == "__main__":
-    init_db()
-    # Simple test
-    log_prediction(
-        "test-uuid-123", 
-        "Pay within 10 minutes", 
-        "scam", 
-        0.95, 
-        ["urgency"], 
-        "English", 
-        "Latin"
-    )
-    print(get_stats())

@@ -86,15 +86,6 @@ class ScamEncoderModel(torch.nn.Module):
         return self.binary_head(pooled).squeeze(-1), self.tactic_head(pooled)
 
 
-def _batch_forward(model, batch, device):
-    inputs = {
-        key: value.to(device)
-        for key, value in batch.items()
-        if key in ("input_ids", "attention_mask", "token_type_ids")
-    }
-    return model(**inputs)
-
-
 def train(model_name: str, config: dict, train_split: str = "train", output_suffix: str = "") -> None:
     from transformers import AutoTokenizer, get_linear_schedule_with_warmup
 

@@ -16,6 +16,8 @@ from __future__ import annotations
 import logging
 import os
 
+from src.models.base import Predictor
+
 
 def resolve_model_name(requested: str | None = None) -> str:
     if requested:
@@ -31,7 +33,7 @@ def onnx_path_for(name: str) -> str | None:
     return None
 
 
-def load_predictor(name: str):
+def load_predictor(name: str) -> Predictor:
     """Return an object exposing .predict(texts) -> list[Prediction].
 
     Falls back to the TF-IDF baseline if the requested neural artefact is absent, so

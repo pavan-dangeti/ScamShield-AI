@@ -24,7 +24,6 @@ class OnnxScamPredictor:
         self.tokenizer = AutoTokenizer.from_pretrained(directory)
         self.input_names = {i.name for i in self.session.get_inputs()}
         self.max_length = max_length or 160
-        self.binary_output = self.session.get_outputs()[0].name
 
     def predict_binary(self, texts: list[str]) -> np.ndarray:
         encoded = self.tokenizer(
