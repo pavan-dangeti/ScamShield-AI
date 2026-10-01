@@ -99,6 +99,19 @@ def main() -> None:
                 **time_calls(run, texts),
                 "artifact_mb": artifact_size_mb(f"models/{config['model_name'].replace('/', '_')}"),
             }
+        elif model_name in ("xlmr-aug-int8", "xlmr-aug-fp32"):
+            from src.model_registry import load_predictor, onnx_path_for
+
+            onnx_path = onnx_path_for(model_name)
+            assert onnx_path is not None
+            predictor = load_predictor(model_name)
+            if predictor.name != model_name:
+                raise SystemExit(f"{model_name}: artefact missing; run scripts.export_model first")
+            report["models"][model_name] = {
+                "device": "cpu",
+                **time_calls(predictor.predict, texts),
+                "artifact_mb": round(os.path.getsize(onnx_path) / 1e6, 1),
+            }
         else:
             print(f"  no CPU path for {model_name}; measure it separately", flush=True)
 
