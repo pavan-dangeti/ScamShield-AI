@@ -1,484 +1,302 @@
-# 🛡️ ScamShield — Multilingual UPI/Payment Scam Detector with Explainable Tactics
+# ScamShield
 
-> A real-time, explainable scam-detection system for India's most common financial fraud messages — built to understand **code-mixed regional languages** (Hinglish, Tanglish, Tenglish, Banglish, and more), not just English.
+**Detects payment scams in SMS and WhatsApp messages written in Indian languages, including code-mixed and romanised text such as Hinglish and Tanglish, and explains which manipulation tactic each scam uses.**
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688.svg)](https://fastapi.tiangolo.com/)
-[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.4-orange.svg)](https://scikit-learn.org/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+**Live demo:** https://scamshield-ai-glhm.onrender.com · **API docs:** https://scamshield-ai-glhm.onrender.com/docs
+(free tier: the service sleeps when idle, so the first request can be slow)
 
----
+![ScamShield demo: an English scam flagged with its tactics and evidence, a real bank alert passing, Tanglish and Hindi scams detected in their own script, and the live dashboard](docs/demo/scamshield_demo.gif)
 
-## 🎯 The Problem
+[![CI](https://github.com/pavan-dangeti/ScamShield-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/pavan-dangeti/ScamShield-AI/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-India processes over 15 billion UPI transactions a month — and alongside that volume comes a flood of payment scams via SMS and WhatsApp: fake KYC alerts, "you've won a prize" messages, fraudulent refund requests, and OTP-phishing attempts.
-
-Most commercial spam/fraud filters are trained primarily on **English-language data from Western contexts**. They miss the specific phrasing patterns used in **code-mixed Indian languages** — messages that switch between English and Hindi, Tamil, Telugu, or Bengali mid-sentence, often in romanized script ("Unga account 30 nimishathula block aagidum...").
-
-**ScamShield** closes that gap. It doesn't just say "this is a scam" — it explains **which manipulation tactic** is being used (urgency, fake authority, false rewards, credential phishing, etc.), in the language the message was written in, and works live over WhatsApp.
+> **Read the results as validation numbers.** They are measured on a held-out split of a
+> corpus that is mostly synthetic or of unverified origin. The hand-labelled test set of
+> real messages is being labelled now; until it is frozen, no number here measures the
+> product on real traffic. See [Limitations](#limitations).
 
 ---
 
-## ✨ Key Features
+## Results at a glance
 
-- **Binary scam classification** — TF-IDF + Logistic Regression pipeline, trained and evaluated with per-language/script breakdowns
-- **Multi-label tactic detection** — identifies *why* a message is dangerous: urgency, authority impersonation, false reward, loss aversion, credential phishing, suspicious links
-- **Evidence extraction** — highlights the exact phrase in the message that triggered each tactic flag
-- **Multilingual by design** — extensible "language pack" architecture (JSON-based) currently covering English, Hindi/Hinglish, Tamil/Tanglish, Telugu/Tenglish, and Bengali/Banglish, with native-script and romanized variants
-- **Rule-based language/script detection** — Unicode-range detection for native scripts + dictionary-based fuzzy matching for romanized text, with graceful fallback for unsupported languages
-- **Live WhatsApp integration** — powered by Twilio's WhatsApp Sandbox; forward any suspicious message and get an instant analysis reply
-- **Self-aware evaluation** — `metrics_report.md` documents exactly where the model performs well vs. poorly, broken down by language and script, including low-support warnings rather than misleading perfect scores
-- **Feedback loop** — every analysis is logged to SQLite with a correction mechanism, designed to support future retraining
+Validation split (1,554 messages), decision threshold 0.5, unless stated. Each row
+comes from a script in this repository; the command regenerates the file the number
+is read from.
 
----
-
-## 🌐 Live Demo
-
-**Web App** — https://scamshield-ai-glhm.onrender.com/
-**API Docs** — https://scamshield-ai-glhm.onrender.com/docs
-
-The deployment is defined in `render.yaml`, whose build command downloads the
-corpus and trains the production model, so a fresh deploy serves a working model
-rather than "Models are not trained". Check which model is live with
-`GET /api/health`.
-
-![ScamShield demo](docs/demo/scamshield_demo.gif)
-
-*The demo: an English scam is flagged with a plain-language explanation, a real bank
-notification passes, a Tanglish code-mixed message is detected as Tamil/romanized and
-flagged, and the analytics dashboard shows the traffic split.*
-
----
-
-## 🏗️ Architecture
-
-```
-                    ┌──────────────────────────────────────────┐
-  WhatsApp / SMS ──▶│  FastAPI  (src/main.py)                  │
-  (Twilio webhook)  │  · signature validation (on by default)  │
-                    │  · CORS allowlist · rate limiter         │
-                    └───────────────┬──────────────────────────┘
-                                    │
-                    ┌───────────────▼──────────────────────────┐
-  Browser UI ──────▶│  src/inference.py                        │
-  (static/)         │  script + language detector              │
-                    │  model registry  (src/model_registry.py) │
-                    └───────┬───────────────────┬──────────────┘
-                            │                   │
-              ┌─────────────▼──────┐   ┌────────▼─────────────────────┐
-              │ ONNX int8 encoder   │   │ TF-IDF + logistic regression │
-              │ XLM-R, 278 MB      │   │ fallback, 10 MB              │
-              │ binary + 6 tactics │   │ binary + 6 tactics           │
-              └─────────┬──────────┘   └────────┬────────────────────┘
-                        │  6.1 ms p50, F1 0.998  │  1.95 ms p50, F1 0.920
-                        └──────────┬──────────────┘
-                                   │
-                    ┌──────────────▼──────────────────────────┐
-                    │  explanation builder (the message's own   │
-                    │  language) + verbatim evidence spans    │
-                    └───────────────┬──────────────────────────┘
-                                    │
-                    ┌───────────────▼──────────────────────────┐
-                    │  SQLite: analysis log, user corrections,  │
-                    │  score-distribution drift monitoring     │
-                    └─────────────────────────────────────────┘
-```
-
-Data pipeline (Phase 1) and evaluation harness (Phases 2-4) are separate from the
-request path:
-
-```
-sources ──▶ download (SHA-256) ──▶ build_dataset ──▶ train ──▶ export/quantise
-             (licence per source)   (scrub, dedup,      │            │
-                                     group-aware split) │            ▼
-                                          │            │      evaluate_models
-                                          ▼            │      evaluate_with_ci
-                                   check_leakage ◀─────┘      evaluate_robustness
-                                                                  benchmark_latency
-```
-
-### Detection Pipeline
-
-1. **Script & Language Detection** (`detector.py`) — Unicode block ranges identify native scripts (Devanagari, Tamil, Telugu, Bengali, etc.); a fuzzy-matched dictionary of common transliterated words identifies romanized regional languages (Hinglish, Tanglish, Tenglish, Banglish). Falls back to `unsupported`/`ambiguous` gracefully.
-2. **Binary Classification** (Model A) — TF-IDF (word + character n-grams) + Logistic Regression, calibrated for probability output.
-3. **Multi-Label Tactic Classification** (Model B) — One-vs-rest TF-IDF + Logistic Regression per tactic category, with evidence spans extracted via top-weighted n-gram matching.
-4. **Explanation Synthesis** — Template-based natural-language explanation combining the detected tactics and evidence.
-
----
-
-## 🌐 Language Coverage
-
-| Language | Native Script | Romanized | Status |
+| Result | Value | Baseline (TF-IDF + logistic regression) | Reproduce |
 |---|---|---|---|
-| English | — | ✅ | Production-ready |
-| Hindi | ✅ Devanagari | ✅ Hinglish | Production-ready |
-| Tamil | ✅ Tamil script | ✅ Tanglish | Production-ready |
-| Telugu | ✅ Telugu script | ✅ Tenglish | Growing dataset |
-| Bengali | ✅ Bengali script | ✅ Banglish | Growing dataset |
-| Kannada, Malayalam, Gujarati, Punjabi, Odia | Script detection only | — | Roadmap (see `docs/adding_a_language.md`) |
+| Scam F1, best model (XLM-R + augmentation) | **0.9980** (95% CI 0.995–1.000) | 0.9082 (0.889–0.926) | `python -m scripts.evaluate_with_ci --models tfidf-lr-aug xlmr-base-aug --out results/evaluation_with_ci_aug.json` |
+| F1 under character swaps, the attack that hurts the baseline most | **0.993** | 0.863 | `python -m scripts.evaluate_robustness --models tfidf-lr tfidf-lr-aug xlmr-base xlmr-base-aug` |
+| CPU latency, one message (int8 ONNX) | **4.44 ms p50** · 278 MB | 0.51 ms · 10 MB | `python -m scripts.benchmark_latency --models tfidf-lr xlmr-aug-int8 --n 200 --device cpu` |
+| HTTP throughput, 1 worker, 8 clients (served model) | **823 req/s**, p95 24 ms, 0 errors | — | see [Serving capacity](#serving-capacity) |
+| Fine-tuned 135M model vs prompted 7B LLM (354-row subsample) | **F1 0.869** vs 0.726 | — | `python -m scripts.evaluate_models --models llm-0shot llm-3shot lora-SmolLM2-135M-Instruct --subsample 400` |
 
-Adding a new language requires **zero code changes** — just a new JSON language pack. See [`docs/adding_a_language.md`](docs/adding_a_language.md).
+**Which model is live, and why.** The int8 XLM-R encoder is the most accurate model
+that is fast enough to serve, and it is what the API loads by default. The live demo
+serves the TF-IDF baseline instead, because a server holding the encoder uses about
+1.1 GB of memory and the free tier allows 512 MB. `GET /api/health` reports the model
+that is actually serving. `SCAMSHIELD_MODEL` switches between them.
 
 ---
 
-## 📊 Results
+## How it works
 
-Every number below is produced by a script in this repository, and the command
-that regenerates it is shown. Full method, per-language breakdown, confidence
-intervals and limitations: [`docs/model_comparison.md`](docs/model_comparison.md).
+```mermaid
+flowchart LR
+    subgraph Clients
+        W[Web UI<br/>static/]
+        T[WhatsApp / SMS<br/>via Twilio]
+    end
+    subgraph API["FastAPI · src/main.py"]
+        M[Request IDs · JSON logs<br/>Prometheus /metrics<br/>rate limit · input cap]
+        S[Twilio signature check]
+    end
+    subgraph Inference["src/inference.py"]
+        D[Script + language detector<br/>Unicode ranges + word lists]
+        R[Model registry<br/>SCAMSHIELD_MODEL]
+        X[int8 ONNX XLM-R<br/>scam head + 6 tactic heads]
+        B[TF-IDF + LR baseline<br/>scam head + 6 tactic heads]
+        E[Explanation + verbatim<br/>evidence spans]
+    end
+    DB[(SQLite<br/>PII-scrubbed log,<br/>feedback, drift)]
+    W --> M
+    T --> S --> M
+    M --> D --> R
+    R -->|default| X
+    R -->|fallback / free tier| B
+    X --> E
+    B --> E
+    E --> DB
+```
 
-### Production model, chosen on measurement
+1. **Script and language.** Unicode ranges identify native scripts (Devanagari, Tamil,
+   Telugu, Bengali and five more). Romanised code-mixing is identified by exact matches
+   against each language pack's word list.
+2. **Decision and tactics.** One model, two heads: a scam/legitimate head and a
+   multi-label head over six tactics (urgency, authority impersonation, false reward,
+   loss aversion, credential phishing, suspicious link), so the explanation is
+   consistent with the decision.
+3. **Explanation.** Each tactic is explained in plain language with the phrase that
+   triggered it, quoted **only if it appears verbatim in the message**. The neural
+   model has no per-token weights, so it says "suspicious phrasing" rather than
+   inventing a quote.
+4. **Logging.** Every analysis is logged to SQLite with phone numbers, emails, UPI
+   handles and long identifiers scrubbed, and feeds the dashboard, user corrections
+   and score-drift monitoring. If the database fails, the user still gets an answer.
 
-| Candidate | F1 (val) | CPU p50 | Size | Throughput | Verdict |
-|---|---|---|---|---|---|
-| **XLM-R + aug, ONNX int8** | **0.9980** | 6.1 ms | 278 MB | 85 msg/s | **Shipped** - best accuracy, 3 attacks at zero flips, fast enough to serve |
-| XLM-R + aug, ONNX fp32 | 0.9980 | 6.2 ms | 1110 MB | - | Same accuracy, 4x the size for 0.1 ms: rejected |
-| TF-IDF + LR (aug) | 0.9198 | 1.95 ms | 10 MB | 3160 msg/s | Kept as the fallback for size-constrained hosts |
+Offline, separate from the request path:
 
-ONNX Runtime was the surprise: it runs the encoder **5x faster** than PyTorch on
-CPU (6.2 ms vs 31.9 ms p50) and int8 quantisation is free here (278 MB, identical
-F1 0.9980, no measured accuracy cost). `python -m scripts.export_model --model
-xlmr-base-aug --quantize` produces it; the API serves it by default and falls back
-to TF-IDF if the artefact is missing.
+```mermaid
+flowchart LR
+    A[download_data<br/>SHA-256 pinned,<br/>licence per source] --> B[build_dataset<br/>scrub PII, dedup,<br/>near-duplicate-aware split]
+    B --> C[check_leakage]
+    B --> D[train_tfidf /<br/>transformer / lora]
+    D --> E[evaluate_models · evaluate_with_ci<br/>evaluate_robustness · benchmark_latency]
+    D --> F[export_model<br/>ONNX + int8]
+```
 
-**Validation split, 1,554 rows, threshold 0.5** —
-`python -m scripts.evaluate_models --models tfidf-lr indicbertv2-mlm xlmr-base`
+Design decisions, alternatives and risks: [`docs/design.md`](docs/design.md).
 
-| Model | What it is | Precision | Recall | F1 | ROC-AUC | Tactic macro-F1 | Command |
+---
+
+## Model comparison
+
+All models see the same split at the same threshold
+(`python -m scripts.evaluate_models --models tfidf-lr tfidf-lr-aug indicbertv2-mlm xlmr-base xlmr-base-aug`,
+written to `results/model_comparison.md`). Latency is CPU, one message at a time
+(`results/latency.json`).
+
+| Model | Precision | Recall | F1 | ROC-AUC | Tactic macro-F1 | CPU p50 | Size |
 |---|---|---|---|---|---|---|---|
-| tfidf-lr | retrained baseline, TF-IDF + LR | 0.8522 | 0.9722 | 0.9082 | 0.9892 | 0.8254 | `python -m scripts.train_tfidf` |
-| indicbertv2-mlm | IndicBERTv2 fine-tuned, 7 heads | 0.9980 | 0.9881 | 0.9930 | 1.0000 | 0.9621 | `python -m src.models.transformer --model ai4bharat/IndicBERTv2-MLM-only --config configs/indicbertv2.json` |
-| xlmr-base | XLM-R base fine-tuned, 7 heads | 0.9941 | 1.0000 | 0.9970 | 0.9999 | 0.9267 | `python -m src.models.transformer --model xlm-roberta-base --config configs/xlmr.json` |
+| TF-IDF + LR (baseline) | 0.8522 | 0.9722 | 0.9082 | 0.9892 | 0.8254 | 0.51 ms | 10.2 MB |
+| TF-IDF + LR, augmented | 0.8589 | 0.9901 | 0.9198 | 0.9884 | 0.8891 | 0.52 ms | 16.6 MB |
+| IndicBERTv2, fine-tuned | 0.9980 | 0.9881 | 0.9930 | 1.0000 | 0.9621 | 11.73 ms | 1120 MB |
+| XLM-R base, fine-tuned | 0.9941 | 1.0000 | 0.9970 | 0.9999 | 0.9267 | 11.71 ms | 1129 MB |
+| **XLM-R base, augmented** | 0.9960 | 1.0000 | **0.9980** | 0.9996 | **0.9871** | 4.44 ms (int8 ONNX) | 278 MB |
 
-**Prompted and LoRA-tuned LLMs, on a 354-row seeded stratified subsample** (the
-same rows for both, because generation is slow) —
-`python -m scripts.evaluate_models --models llm-0shot llm-3shot --subsample 400`
+**LLMs** — same 354-row seeded subsample for every row, because generation is slow
+(`results/model_comparison_subsample400.md`):
 
-| Model | What it is | Precision | Recall | F1 | Tactic macro-F1 | Command |
-|---|---|---|---|---|---|---|
-| llm-0shot | Qwen2.5-7B-Instruct-4bit, rules + JSON | 0.5329 | 0.9889 | 0.6926 | 0.0919 | `python -m src.models.llm_prompted --shots 0 --limit 400` |
-| llm-3shot | same model, 3 examples | 0.5696 | 1.0000 | 0.7258 | 0.4030 | `python -m src.models.llm_prompted --shots 3 --limit 400` |
-| lora-SmolLM2-135M | SmolLM2-135M + LoRA r=16, 1 epoch | 0.9597 | 0.7944 | 0.8693 | 0.1822 | `python -m src.models.lora --model HuggingFaceTB/SmolLM2-135M-Instruct --config configs/lora_smollm135m.json --device cpu` |
-
-The prompted LLM flags 334 of 354 messages as scam (316 of 354 with three
-examples): a prompted model learns the *topic* of fraud detection, not the decision
-boundary. **Fine-tuning a 135M model - 50x smaller than the 7B it is compared
-against - reaches F1 0.869 at precision 0.96**, because the answer token it is
-trained to emit carries the corpus prior instead of the prompt's prior. For an
-imbalanced detection task, fine-tuning a small model beats prompting a large one.
-
-**Confidence intervals and calibration** —
-`python -m scripts.evaluate_with_ci --models tfidf-lr indicbertv2-mlm xlmr-base`
-
-| Model | F1 (95% CI, 2,000 bootstrap) | Macro F1 over cells | Brier | ECE |
+| Model | Precision | Recall | F1 | Tactic macro-F1 |
 |---|---|---|---|---|
-| tfidf-lr | 0.9082 (0.889 - 0.926) | 0.9277 | 0.0495 | 0.0631 |
-| indicbertv2-mlm | 0.9930 (0.987 - 0.998) | 0.9972 | 0.0040 | 0.0059 |
-| xlmr-base | 0.9970 (0.993 - 1.000) | 0.9965 | 0.0023 | 0.0037 |
+| Qwen2.5-7B-Instruct (4-bit), zero-shot | 0.5329 | 0.9889 | 0.6926 | 0.0919 |
+| Qwen2.5-7B-Instruct (4-bit), 3-shot | 0.5696 | 1.0000 | 0.7258 | 0.4030 |
+| SmolLM2-135M + LoRA (r=16, 1 epoch) | 0.9597 | 0.7944 | 0.8693 | 0.1822 |
 
-**Robustness under attack** — a filter is attacked by construction.
-`python -m scripts.evaluate_robustness --models tfidf-lr tfidf-lr-aug xlmr-base xlmr-base-aug`
+The prompted 7B model calls almost everything a scam: it learns the topic of fraud
+detection, not the decision boundary. Fine-tuning a model 50× smaller fixes that,
+because the label it is trained to emit carries the corpus prior. Prompting costs
+about $0.004 and 60 minutes per 1,000 messages on a laptop, or $0.14 per 1,000 through
+an API at $0.30 per million tokens (`python -m scripts.llm_cost --shots 3`).
 
-F1 under six perturbation families (leetspeak, look-alike characters, transliteration
-drift, spacing tricks, emoji injection, disguised links), with the change from clean in
-brackets. Full method and caveats: [`docs/robustness.md`](docs/robustness.md).
+**Calibration and threshold.** XLM-R + augmentation has a Brier score of 0.0010 and
+expected calibration error 0.0016; the baseline 0.0495 and 0.0631
+(`results/evaluation_with_ci*.json`). Counting a missed scam as 10× the cost of a false
+alarm, the cost-optimal threshold is **0.30** for the baseline (best-F1 is 0.45), and
+0.75 for XLM-R + augmentation, where it coincides with best-F1. Full sweep and method:
+[`docs/model_comparison.md`](docs/model_comparison.md).
 
-| Model | Clean F1 | char_swap | lookalike | spacing | mean flip rate |
+**The weak spot the aggregate hides.** On Bengali in native script (192 rows) the
+baseline scores F1 0.652 at precision 0.48: it flags most legitimate Bengali messages
+as scams. The encoders score 1.0 on the same cell.
+
+---
+
+## Robustness
+
+A scam filter is attacked by construction. Six perturbation families, applied to the
+validation split (`results/robustness.md`; method in [`docs/robustness.md`](docs/robustness.md)):
+
+| Model | Clean F1 | Character swaps | Look-alike letters | Spacing tricks | Mean flip rate |
 |---|---|---|---|---|---|
-| tfidf-lr | 0.9082 | 0.863 (-0.045) | 0.884 (-0.024) | 0.886 (-0.022) | 0.017 |
-| tfidf-lr-aug | 0.9198 | 0.902 (-0.018) | 0.909 (-0.011) | 0.911 (-0.009) | 0.015 |
-| xlmr-base | 0.9970 | 0.964 (-0.033) | 0.977 (-0.020) | 0.971 (-0.026) | 0.011 |
-| **xlmr-base-aug** | **0.9980** | **0.993 (-0.005)** | 0.986 (-0.012) | 0.985 (-0.013) | **0.003** |
+| TF-IDF + LR | 0.9082 | 0.863 (−0.045) | 0.884 (−0.024) | 0.886 (−0.022) | 0.017 |
+| TF-IDF + LR, augmented | 0.9198 | 0.902 (−0.018) | 0.909 (−0.011) | 0.911 (−0.009) | 0.008 |
+| XLM-R base | 0.9970 | 0.964 (−0.033) | 0.977 (−0.020) | 0.971 (−0.026) | 0.011 |
+| **XLM-R base, augmented** | **0.9980** | **0.993 (−0.005)** | 0.986 (−0.012) | 0.985 (−0.013) | **0.003** |
 
-Leetspeak is the attack that bites, and the model that wins on clean text is not
-automatically the most robust: the un-augmented IndicBERTv2 loses 0.083 F1 to
-character swaps. Training on perturbed text made the models both more robust and
-slightly more accurate, at **no inference cost** — the augmented baseline runs at
-1.95 ms p50 versus 1.96 ms un-augmented, same 10.2 MB artefact.
-
-**Cost of a mistake.** Treating a missed scam as 10x a false alarm, the
-cost-optimal threshold is 0.30 for the baseline (from 0.45 at best-F1) and 0.45 for
-XLM-R, where the choice does not matter. The full 0.05-0.95 sweep is in
-`results/evaluation_with_ci.json`.
-
-**Latency on CPU, 100 messages** —
-`python -m scripts.benchmark_latency --models tfidf-lr indicbertv2-mlm xlmr-base --n 100 --device cpu`
-
-| Model | p50 | p95 | Throughput | Artefact |
-|---|---|---|---|---|
-| tfidf-lr | 2.31 ms | 4.00 ms | 389 msg/s | 10.2 MB |
-| indicbertv2-mlm | 38.67 ms | 134.74 ms | 20.6 msg/s | 1120 MB |
-| xlmr-base | 31.89 ms | 82.70 ms | 26.3 msg/s | 1129 MB |
-
-The prompted 7B LLM costs about $0.004 and 60 minutes per 1,000 messages on
-local hardware, or $0.14 per 1,000 via a hosted API at a blended $0.30/1M tokens
-(`python -m scripts.llm_cost --shots 3`).
-
-> **What these numbers do and do not mean.** They are **validation** numbers on a corpus
-> that is still mostly synthetic. The hand-verified real-message test set is not frozen yet,
-> so no number here measures the product on real traffic. The weak spot the breakdown does
-> surface: the baseline scores 0.652 F1 on Bengali native (precision 0.48) - it flags most
-> legitimate Bengali messages as scams, an error invisible in the aggregate.
+Transliteration drift, emoji insertion and disguised links cost every model at most
+0.009 F1. Training on perturbed text made both models more robust and slightly more
+accurate on clean text, at no extra latency; the augmented baseline's artefact grows
+from 10.2 to 16.6 MB.
 
 ---
 
-## 🗂️ Data and the hand-verified test set
+## Serving capacity
 
-ScamShield separates three things that are easy to confuse:
+HTTP load test against a local server, load generator on the same 10-core arm64
+machine, so these are lower bounds for the server alone. Each file records the exact
+server and load commands.
 
-- **Training data** — licence-checked corpora, template packs, and (training-only) LLM-written
-  synthetic messages. Sources, licences and provenance: [`docs/data_sources.md`](docs/data_sources.md).
-- **The hand-verified test set** — **real** messages only, labelled by a human against
-  [`docs/labeling_guidelines.md`](docs/labeling_guidelines.md), never used for training or
-  threshold tuning. Composition and gaps: `docs/test_set.md`.
-- **Synthetic data** — LLM-generated, always marked, and **never** allowed in the test set.
-
-Build the corpus and prove it is clean:
-
-```bash
-python -m scripts.download_data        # fetch sources, SHA-256 pinned
-python -m scripts.build_dataset           # PII scrub, dedup, near-dup-aware train/val split
-python -m scripts.check_leakage           # no message appears (even near-duplicated) across splits
-```
-
-Prepare the test candidate pool, and help fill the languages that have no public corpus:
+| Configuration | Clients | Req/s | p50 | p95 | Errors | Report |
+|---|---|---|---|---|---|---|
+| TF-IDF, 1 worker | 8 | 823 | 4.6 ms | 23.9 ms | 0% | `results/load_test_http_tfidf_w1.md` |
+| TF-IDF, 4 workers | 8 | 1,250 | 3.2 ms | 21.3 ms | 0% | `results/load_test_http_tfidf_w4.md` |
+| int8 XLM-R, 1 worker | 8 | 388 | 19.3 ms | 33.6 ms | 0% | `results/load_test_http_onnx_w1.md` |
 
 ```bash
-python -m scripts.make_test_candidates    # unlabelled, real-only candidates
-python -m scripts.import_user_messages --input my_messages.csv   # add your own real messages
+RATE_LIMIT_PER_MINUTE=1000000 SCAMSHIELD_MODEL=tfidf-lr uvicorn src.main:app --port 8000 --workers 1
+python -m scripts.load_test --serve --url http://127.0.0.1:8000/api/analyze --n 3000 --concurrency 1 8 32
 ```
 
-Label with the keyboard-driven tool, which shows messages blind (shuffled order, no
-source, no hint label), autosaves, and ends with a blind re-check of ~10% of items:
+Profiling under load found the baseline vectorising every message seven times and
+rebuilding its vocabulary for every quoted evidence span; fixing both took a single
+worker from 161 to 823 req/s with identical predictions. Inference is CPU-bound, so
+throughput scales with worker processes, not threads, and batching *lowers* encoder
+throughput on CPU (178 msg/s one at a time, 91 msg/s in batches of 32) because every
+message is padded to the longest.
 
-```bash
-python -m http.server 8000                # then open http://localhost:8000/docs/labeling/labeler.html
-python -m scripts.freeze_test --labels data/test_candidates/labels.jsonl   # -> data/processed/test.jsonl + docs/test_set.md
-```
-
-`freeze_test` reports label quality in `docs/test_set.md`: self-agreement (Cohen's kappa
-against the blind re-check) and agreement with the original UCI annotation, with every
-disagreement listed for audit.
-
-> **Honest limitation:** the only licence-clean, real, labelled scam corpus available for this
-> task is the UCI SMS Spam Collection, which is **English**. For Hindi, Tamil, Telugu and
-> Bengali there is no public real corpus, so those test cells are filled from messages the
-> owner supplies. This gap is documented rather than papered over with synthetic data.
+**Failure handling** is tested by breaking each dependency on purpose
+(`tests/test_api.py`): a crashing model returns a generic 500 with a request ID and
+logs the cause; a missing or corrupt model file falls back to the baseline; a database
+outage still returns the analysis; oversized input is a 422; a forged Twilio signature
+is a 403; a model failure inside the WhatsApp webhook still answers Twilio with valid
+TwiML, so Twilio does not retry. **Observability:** JSON logs carrying a request ID
+(never the message text), and Prometheus metrics at `/metrics`, including the live
+score histogram used for drift monitoring (`python -m scripts.monitor_drift`).
 
 ---
 
-## 📊 Evaluation
+## Data
 
-The current production model (TF-IDF + logistic regression) is trained and evaluated on the
-template-generated corpus described in [`docs/data_sources.md`](docs/data_sources.md). Its
-metrics are written to `models/metrics_report.md` on every `python -m src.train` run, with a
-per-language and per-script breakdown and low-support warnings.
+| Provenance | Rows | Source | Used for |
+|---|---|---|---|
+| Real | 4,904 | UCI SMS Spam Collection (English, CC BY 4.0) | training, validation, test candidates |
+| Unverified | 6,855 | Bengali SMS smishing corpus (collection method not stated) | training, validation |
+| Template | 2,180 | language packs in `data/language_packs/`, expanded | training, validation |
+| Synthetic | 1,538 | LLM-generated, quality-gated, always marked | training only, never test |
 
-**Know what the numbers mean.** The legacy corpus expands a small set of hand-written
-templates with random placeholders, and the model is evaluated on held-out samples drawn from
-those same templates. That measures template memorisation, not real-world accuracy — which is
-exactly why the project now separates a licence-checked corpus and a hand-verified test set
-from the training data.
+15,477 rows after PII scrubbing and de-duplication: 13,923 train and 1,554 validation,
+split so that near-duplicates never cross splits (`python -m scripts.check_leakage`
+proves it). Datasets are downloaded by script and pinned by SHA-256, never committed.
+Licences, provenance and known biases: [`docs/data_card.md`](docs/data_card.md),
+[`docs/data_sources.md`](docs/data_sources.md).
 
-The reproducible data pipeline is the source of truth for evaluation going forward:
-
-```bash
-python -m scripts.download_data      # fetch licence-checked sources, pinned by SHA-256
-python -m scripts.build_dataset         # scrub, dedup, near-dup-aware split -> data/processed/
-python -m scripts.check_leakage         # prove no message leaks across splits
-```
-
-Every figure quoted in this README comes from a script in this repository, with the exact
-command shown next to it. See [`docs/data_card.md`](docs/data_card.md) for what is in the
-corpus, what is real vs. synthetic vs. unverified, and the known biases.
+**The hand-verified test set** contains real messages only, is labelled blind against
+written guidelines ([`docs/labeling_guidelines.md`](docs/labeling_guidelines.md)) in a
+keyboard-driven tool, and reports its own label quality: self-agreement against a blind
+re-check, and agreement with the original UCI annotation. 189 English candidates are
+being labelled. There is no public real corpus for Hindi, Tamil, Telugu or Bengali, so
+those cells depend on contributed messages
+(`python -m scripts.import_user_messages --input messages.csv`).
 
 ---
 
-## 🚀 Getting Started
-
-### Prerequisites
-- Python 3.10+
-- pip
-
-### Installation
+## Run it locally
 
 ```bash
-git clone https://github.com/pavan-dangeti/ScamShield-AI.git
-cd ScamShield-AI
-pip install -r requirements.txt
+git clone https://github.com/pavan-dangeti/ScamShield-AI.git && cd ScamShield-AI
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
 cp .env.example .env
+
+python -m scripts.download_data     # fetch sources, SHA-256 pinned
+python -m scripts.build_dataset     # scrub, de-duplicate, split
+python -m scripts.train_tfidf       # baseline model, about two minutes
+SCAMSHIELD_MODEL=tfidf-lr python -m src.main   # http://127.0.0.1:8000
 ```
 
-### Generate the dataset and train the models
+Checks, as CI runs them: `pytest tests/ -q`, `ruff check src scripts tests`,
+`vulture src scripts tests --min-confidence 80`,
+`mypy --explicit-package-bases --namespace-packages src scripts tests`.
 
-```bash
-python scripts/dataset_generator.py
-python -m src.train
-```
+Neural models: `pip install -r requirements-ml.txt`, then the commands in
+[`docs/model_comparison.md`](docs/model_comparison.md), or the free-GPU notebook
+[`notebooks/train_encoder_colab.ipynb`](notebooks/train_encoder_colab.ipynb). The int8
+model is produced by `python -m scripts.export_model --model xlmr-base-aug --quantize`.
+WhatsApp: [`docs/twilio_setup.md`](docs/twilio_setup.md). New language, no code change
+for a script the detector already knows: [`docs/adding_a_language.md`](docs/adding_a_language.md).
+The demo GIF is recorded by `python -m scripts.record_demo`.
 
-This produces `data/scam_dataset.csv`, the trained model artifacts in `models/`, and `models/metrics_report.md`.
-
-> This is the original template-based pipeline, kept so the current production model still
-> trains. The licence-checked corpus and its hand-verified test set are built separately —
-> see [`docs/data_sources.md`](docs/data_sources.md) and
-> [`docs/data_card.md`](docs/data_card.md) for `python -m scripts.download_data`,
-> `python -m scripts.build_dataset` and `python -m scripts.check_leakage`.
-
-### Run the server
-
-```bash
-python -m src.main
-```
-
-Visit `http://127.0.0.1:8000` for the web dashboard, or `http://127.0.0.1:8000/docs` for the interactive API documentation.
-
-### (Optional) Connect a live WhatsApp number
-
-See [`docs/twilio_setup.md`](docs/twilio_setup.md) for the full Twilio Sandbox + ngrok setup — takes about 10 minutes and is completely free.
-
----
-
-## 🔌 API Reference
-
-| Endpoint | Method | Description |
+| Endpoint | Method | Purpose |
 |---|---|---|
-| `/api/analyze` | POST | Analyze a message; returns scam probability, language/script, detected tactics with evidence, and a plain-language explanation |
-| `/api/sms-webhook` | POST | Twilio webhook for WhatsApp/SMS — auto-replies with an analysis summary |
-| `/api/feedback` | POST | Submit a correction for a previously analyzed message |
-| `/api/stats` | GET | Aggregate statistics: tactic frequency, language distribution, web vs. messaging traffic |
+| `/api/analyze` | POST | `{"text": …}` → probability, label, language and script, tactics with evidence, explanation |
+| `/api/sms-webhook` | POST | Twilio webhook for WhatsApp/SMS; replies with TwiML |
+| `/api/feedback` | POST | Record a user's correction for an analysed message |
+| `/api/stats` | GET | Dashboard aggregates |
+| `/api/health` | GET | Liveness and the model actually serving |
+| `/metrics` | GET | Prometheus metrics |
 
-Example request:
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Unga account 30 nimishathula block aagidum, ippo click pannunga: bit.ly/xyz"}'
-```
+| WhatsApp | API docs |
+|---|---|
+| ![WhatsApp reply from ScamShield](screenshots/screenshots_whatsapp_demo.png) | ![Swagger UI](screenshots/screenshots_swagger.png) |
 
 ---
 
-## 📁 Project Structure
+## Limitations
 
-```
-scamshield/
-├── data/
-│   ├── language_packs/        # Per-language scam/legit templates (extensible)
-│   ├── raw/                   # downloaded sources (not committed, re-fetched by script)
-│   ├── processed/             # built train/val (+ frozen test) splits (not committed)
-│   ├── synthetic/             # locally generated, training-only messages
-│   ├── test_candidates/       # unlabelled pool for the hand-verified test set
-│   └── scam_dataset.csv       # legacy template dataset (kept for the current model)
-├── docs/
-│   ├── data_sources.md        # every source: licence, provenance, eligibility
-│   ├── data_card.md           # corpus composition, biases, limitations
-│   ├── labeling_guidelines.md # scam vs legit rules + per-tactic definitions
-│   ├── labeling/labeler.html  # keyboard-driven test-set labelling tool
-│   ├── adding_a_language.md
-│   └── twilio_setup.md
-├── models/
-│   ├── binary_classifier.pkl
-│   ├── tactic_classifier.pkl
-│   ├── vectorizers.pkl
-│   └── metrics_report.md
-├── scripts/
-│   ├── download_data.py       # fetch licence-checked sources (SHA-256 pinned)
-│   ├── build_dataset.py       # scrub, dedup, near-dup-aware train/val split
-│   ├── check_leakage.py       # prove no leakage across splits
-│   ├── generate_synthetic.py  # LLM-written training data (training only)
-│   ├── make_test_candidates.py# assemble the unlabelled test candidate pool
-│   ├── import_user_messages.py# import owner-contributed real messages
-│   ├── freeze_test.py         # freeze hand-verified test set + write docs/test_set.md
-│   ├── scrub_pii.py           # PII scrubbing
-│   └── dataset_generator.py   # legacy template expansion
-├── src/
-│   ├── detector.py             # Script/language detection
-│   ├── train.py                # Training + evaluation
-│   ├── inference.py            # Prediction + explanation logic
-│   ├── taxonomy.py             # manipulation-tactic taxonomy (single source of truth)
-│   ├── database.py             # SQLite logging
-│   └── main.py                 # FastAPI app
-├── tests/                      # data-pipeline + integration tests
-└── static/                     # Web dashboard (HTML/CSS/JS)
-```
+These are the limitations the measurements show, not a wish list.
 
----
-## 📸 Screenshots
+1. **Every accuracy number is a validation number.** The real-message test set is not
+   frozen yet. Near-perfect validation F1 for the encoders on a corpus built partly from
+   templates should be read as "learned this corpus", not "solved the problem".
+2. **The corpus is mostly synthetic or of unverified origin.** Only 4,904 rows are real
+   and labelled with a known collection method, and they are English messages from the
+   UK, 2004–2011. Expect over-flagging of legitimate Indian marketing the model has not seen.
+3. **Bengali is 37% of the corpus**, from a source that does not state how it was
+   collected, so per-language results over-represent it. Tamil and Telugu cells are small
+   enough that their individual numbers mean little.
+4. **Tactic labels are template-derived**, so tactic metrics measure recognition of
+   template families. Evidence spans from the baseline can be weak (a number, a fragment
+   of a link), and the neural model cannot quote evidence at all.
+5. **Explanations are English only**, whatever the message's language.
+6. **Language detection is a word list**, so romanised text with few listed words is
+   reported as English.
+7. **Robustness covers six static attack families.** No adaptive attack that searches
+   against the model was run.
+8. **The live demo serves the baseline**, the weaker model, because of free-tier memory.
+   Its dashboard resets when the service restarts.
+9. **One labeller.** The test set's label quality is measured against a blind re-check
+   and the UCI annotation, not against a second person.
 
-### 🏠 Homepage
+## Documentation
 
-![Homepage](screenshots/screenshots_homepage.png)
+[`docs/design.md`](docs/design.md) design and trade-offs ·
+[`docs/model_card.md`](docs/model_card.md) ·
+[`docs/data_card.md`](docs/data_card.md) ·
+[`docs/model_comparison.md`](docs/model_comparison.md) ·
+[`docs/robustness.md`](docs/robustness.md) ·
+[`docs/labeling_guidelines.md`](docs/labeling_guidelines.md)
 
----
-
-### 🔍 Scam Detection
-
-![Scam Detection](screenshots/screenshots_scam_detection.png)
-
----
-
-## 📊 Analytics Dashboard
-
-> ⚠️ Note: This demo is hosted on Render's free tier, which uses an ephemeral filesystem — stats shown here may reset periodically when the service restarts.
-
-![Dashboard](screenshots/screenshots_dashboard.png)
-
----
-
-### 📖 API Documentation
-
-![Swagger](screenshots/screenshots_swagger.png)
-
----
-
-### 📱 WhatsApp Integration
-
-![WhatsApp](screenshots/screenshots_whatsapp_demo.png)
----
-
-## 🔭 Limitations
-
-These are the limitations the measured numbers actually show, not a wish list.
-
-1. **Every accuracy number is a validation number.** The hand-verified
-   real-message test set is **not frozen**: 189 English candidates are labelled
-   and waiting, and the eight Indic cells have no public real corpus. Until the
-   owner labels them and `python -m scripts.freeze_test` runs, nothing in this
-   README measures the product on real traffic. This is the single biggest gap.
-2. **The corpus is mostly synthetic or of unstated provenance.** 4,904 real rows
-   (UCI, English, UK, 2004-2011), 6,855 Bengali rows from a corpus that does not
-   state how it was collected, 2,180 template rows, 1,538 synthetic rows. See
-   [`docs/data_card.md`](docs/data_card.md).
-3. **Bengali is 37% of the corpus** from that unverified source, so per-language
-   results over-represent Bengali relative to real traffic. Telugu and Tamil
-   cells have 24-38 validation rows, wide enough that their individual numbers
-   mean little.
-4. **Tactic explanations are weaker than the decision.** Tactic labels are
-   template-derived, so tactic metrics measure "which template family is this".
-   A contextual encoder cannot attribute a verbatim evidence span, so it reports
-   generic phrasing rather than inventing a quote.
-5. **The explanations are English-only**, even when the message is not.
-6. **Adversarial coverage is six static families.** No adaptive (EOT /
-   gradient-guided) attack was run, and robustness to a seventh family is
-   untested.
-7. **The prompted-LLM arm over-flags** (334 of 354 messages called scam), which is
-   reported rather than tuned away; fine-tuning is what fixes it.
-8. **Single-rater labelling.** There is no second labeller, so the inter-rater
-   agreement check in `docs/labeling_guidelines.md` cannot be run.
-9. **English-only real data means the real-data rows are UK banking and carrier
-   messages.** Expect over-flagging of legitimate Indian marketing the model has
-   not seen.
-
-**Planned:** Kannada, Malayalam, Gujarati, Punjabi and Odia language packs;
-multilingual explanations; a frozen, published test set.
-
----
-
-## 🧠 Why This Project
-
-This started as an exploration of a real, underexplored gap: most fraud-detection systems are evaluated almost entirely in English, despite the fact that hundreds of millions of users in India communicate — and get scammed — in code-mixed regional languages. ScamShield is an attempt to build a system that is honest about *where it works and where it doesn't*, rather than optimizing for a single headline accuracy number.
-
----
-
-## 📄 License
+## License
 
 MIT
