@@ -26,7 +26,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.neighbors import NearestNeighbors
 
-from scripts.scrub_pii import scrub_text
+from src.pii import scrub_text
 from src.taxonomy import TACTICS
 
 RAW_DIR = "data/raw"

@@ -29,7 +29,7 @@ from datetime import date
 
 import requests
 
-from scripts.scrub_pii import scrub_text
+from src.pii import scrub_text
 from src.taxonomy import TACTICS
 
 SYNTHETIC_DIR = "data/synthetic"

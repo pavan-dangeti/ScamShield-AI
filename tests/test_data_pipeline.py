@@ -17,7 +17,7 @@ from scripts.build_dataset import (
     normalize_text,
 )
 from scripts.generate_synthetic import validate
-from scripts.scrub_pii import scrub_text
+from src.pii import scrub_text
 from src.detector import ScriptLanguageDetector
 
 # Two messages from the same template with different placeholders are exactly the
