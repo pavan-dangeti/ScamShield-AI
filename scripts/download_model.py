@@ -19,8 +19,9 @@ def main() -> None:
     print(f"fetching {manifest['repo_id']} at {manifest['revision'][:12]} -> {manifest['local_dir']}")
     onnx_path = ensure_model(MANIFEST)
     for name in manifest["files"]:
-        size = os.path.getsize(os.path.join(manifest["local_dir"], name)) / 1e6
-        print(f"  verified {name} ({size:.1f} MB)")
+        size = os.path.getsize(os.path.join(manifest["local_dir"], name))
+        shown = f"{size / 1e6:.1f} MB" if size >= 1e6 else f"{size / 1e3:.1f} KB"
+        print(f"  verified {name} ({shown})")
     print(f"ready: {onnx_path}")
 
 

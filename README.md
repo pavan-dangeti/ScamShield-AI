@@ -9,6 +9,7 @@ handle poorly.
 [Live demo](https://scamshield-ai-glhm.onrender.com) ·
 [API reference](https://scamshield-ai-glhm.onrender.com/docs) ·
 [Design document](docs/design.md) ·
+[Model on Hugging Face](https://huggingface.co/pavan-dangeti/scamshield-xlmr-int8) ·
 [Model card](docs/model_card.md) ·
 [Data card](docs/data_card.md)
 
@@ -267,8 +268,10 @@ mypy --explicit-package-bases --namespace-packages src scripts tests
 
 ### Serving the fine-tuned model
 
-The int8 XLM-R model is published on Hugging Face Hub; `configs/model_hub.json` pins the
-repository, the exact revision and a SHA-256 checksum for every file.
+The int8 XLM-R model is published at
+[pavan-dangeti/scamshield-xlmr-int8](https://huggingface.co/pavan-dangeti/scamshield-xlmr-int8) (CC BY-NC 4.0, with its own model card);
+`configs/model_hub.json` pins that repository, the exact revision and a SHA-256
+checksum for every file.
 
 ```bash
 pip install -r requirements-onnx.txt     # onnxruntime + tokenizer, no torch
