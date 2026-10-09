@@ -14,7 +14,7 @@ import hashlib
 import json
 import logging
 import os
-import tempfile
+import time
 
 import requests
 
@@ -42,24 +42,37 @@ def sha256(path: str) -> str:
     return digest.hexdigest()
 
 
-def _download(url: str, target: str, expected: str) -> None:
-    # Stream to a temporary file in the same directory, check it, then rename:
-    # an interrupted or corrupt download never replaces a good file.
-    directory = os.path.dirname(target)
-    with requests.get(url, stream=True, timeout=60) as response:
-        response.raise_for_status()
-        handle = tempfile.NamedTemporaryFile(dir=directory, delete=False)
-        try:
-            with handle:
-                for block in response.iter_content(chunk_size=1 << 20):
-                    handle.write(block)
-            actual = sha256(handle.name)
-            if actual != expected:
-                raise ModelHubError(f"{os.path.basename(target)}: checksum {actual} does not match {expected}")
-            os.replace(handle.name, target)
-        finally:
-            if os.path.exists(handle.name):
-                os.unlink(handle.name)
+def _download(url: str, target: str, expected: str, attempts: int = 4) -> None:
+    # Download into ``<target>.part``, resuming with an HTTP range request when a
+    # large file is cut off mid-transfer, then check the whole file and rename it.
+    # A failed or corrupt download never replaces a good file or stays on disk.
+    partial = target + ".part"
+    name = os.path.basename(target)
+    try:
+        for attempt in range(1, attempts + 1):
+            have = os.path.getsize(partial) if os.path.exists(partial) else 0
+            headers = {"Range": f"bytes={have}-"} if have else {}
+            try:
+                with requests.get(url, stream=True, timeout=60, headers=headers) as response:
+                    response.raise_for_status()
+                    # 206 continues the partial file; a 200 means the server sent it all again.
+                    mode = "ab" if have and response.status_code == 206 else "wb"
+                    with open(partial, mode) as handle:
+                        for block in response.iter_content(chunk_size=1 << 20):
+                            handle.write(block)
+                break
+            except (requests.ConnectionError, requests.Timeout, requests.exceptions.ChunkedEncodingError) as error:
+                if attempt == attempts:
+                    raise ModelHubError(f"{name}: download failed after {attempts} attempts: {error}") from error
+                log.warning("download interrupted, resuming", extra={"file": name, "attempt": attempt})
+                time.sleep(attempt)
+        actual = sha256(partial)
+        if actual != expected:
+            raise ModelHubError(f"{name}: checksum {actual} does not match {expected}")
+        os.replace(partial, target)
+    finally:
+        if os.path.exists(partial):
+            os.unlink(partial)
 
 
 def ensure_model(manifest_path: str = MANIFEST) -> str:

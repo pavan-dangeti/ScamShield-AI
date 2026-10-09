@@ -13,8 +13,10 @@ FILES = {"model.int8.onnx": b"onnx-bytes", "tokenizer.json": b"{}"}
 
 
 class FakeResponse:
-    def __init__(self, body: bytes) -> None:
+    def __init__(self, body: bytes, status_code: int = 200, cut_after: int | None = None) -> None:
         self.body = body
+        self.status_code = status_code
+        self.cut_after = cut_after
 
     def __enter__(self):
         return self
@@ -26,7 +28,11 @@ class FakeResponse:
         pass
 
     def iter_content(self, **_kwargs):
-        yield self.body
+        if self.cut_after is None:
+            yield self.body
+            return
+        yield self.body[: self.cut_after]
+        raise model_hub.requests.exceptions.ChunkedEncodingError("Connection broken: IncompleteRead")
 
 
 def write_manifest(tmp_path, files=FILES, repo_id="someone/scamshield", revision="abc123"):
@@ -81,3 +87,31 @@ def test_verified_files_are_not_downloaded_again(tmp_path, monkeypatch):
 def test_unpublished_manifest_fails_clearly(tmp_path):
     with pytest.raises(model_hub.ModelHubError, match="not been published"):
         model_hub.ensure_model(write_manifest(tmp_path, repo_id=None, revision=None))
+
+
+def test_interrupted_download_resumes_from_where_it_stopped(tmp_path, monkeypatch):
+    body = b"0123456789" * 100
+    files = {"model.int8.onnx": body}
+    calls: list[dict] = []
+
+    def flaky_get(url, headers, **_kwargs):
+        calls.append(dict(headers))
+        if not headers:
+            return FakeResponse(body, cut_after=340)  # connection drops after 340 bytes
+        start = int(headers["Range"].removeprefix("bytes=").rstrip("-"))
+        return FakeResponse(body[start:], status_code=206)
+
+    monkeypatch.setattr(model_hub.requests, "get", flaky_get)
+    monkeypatch.setattr(model_hub.time, "sleep", lambda seconds: None)
+    model_hub.ensure_model(write_manifest(tmp_path, files=files))
+    assert (tmp_path / "model" / "model.int8.onnx").read_bytes() == body
+    assert calls == [{}, {"Range": "bytes=340-"}]
+
+
+def test_gives_up_after_repeated_failures_and_leaves_nothing(tmp_path, monkeypatch):
+    files = {"model.int8.onnx": b"x" * 100}
+    monkeypatch.setattr(model_hub.requests, "get", lambda url, **_kwargs: FakeResponse(b"x" * 100, cut_after=10))
+    monkeypatch.setattr(model_hub.time, "sleep", lambda seconds: None)
+    with pytest.raises(model_hub.ModelHubError, match="after 4 attempts"):
+        model_hub.ensure_model(write_manifest(tmp_path, files=files))
+    assert list((tmp_path / "model").iterdir()) == []
