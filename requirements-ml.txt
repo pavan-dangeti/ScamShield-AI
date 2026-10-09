@@ -4,6 +4,8 @@
 torch
 transformers>=5.17.0  # checkpoints trained on Colab are saved by v5 and do not load in v4
 peft
+onnx  # ONNX export (scripts/export_model.py)
+onnxruntime  # int8 quantisation and ONNX evaluation
 accelerate
 pyarrow
 # Optional, macOS/Apple silicon only: local synthetic generation and the
