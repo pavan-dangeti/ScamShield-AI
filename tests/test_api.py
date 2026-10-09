@@ -219,6 +219,7 @@ def test_webhook_model_failure_still_answers_twilio_with_valid_twiml(api, monkey
 
 def test_missing_or_corrupt_model_artefact_falls_back_to_the_baseline(tmp_path, monkeypatch, tiny_model):
     monkeypatch.setattr(TfidfScamModel, "load", staticmethod(lambda path: tiny_model))
+    monkeypatch.setattr(model_registry, "_fetch_published_model", lambda: None)  # no network in tests
     monkeypatch.setattr(model_registry, "onnx_path_for", lambda name: str(tmp_path / "missing.onnx"))
     assert model_registry.load_predictor("xlmr-aug-int8") is tiny_model
 

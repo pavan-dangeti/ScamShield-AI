@@ -1,0 +1,12 @@
+{
+  "repo_id": null,
+  "revision": null,
+  "local_dir": "models/onnx/xlm-roberta-base-aug",
+  "onnx_file": "model.int8.onnx",
+  "files": {
+    "model.int8.onnx": "ef34301b6531470174b80b917b03fcb7717f6e2e1a4dee27884cd3c36cc3b0d0",
+    "tokenizer.json": "3155a4d556cd68db165662297e1b60b2ab9836d74c56cf095bbf3ba9c52f1a7f",
+    "tokenizer_config.json": "d76b80ac029ba3e3dbf34a147526b69b80f8229f92e9e3b19b8d4d4defface88",
+    "special_tokens_map.json": "38d989b0fdad0fec0c67c14b1f3c8b68184022cf6d4adc5444526ced8653f738"
+  }
+}
