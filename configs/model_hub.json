@@ -1,6 +1,6 @@
 {
-  "repo_id": null,
-  "revision": null,
+  "repo_id": "pavan-dangeti/scamshield-xlmr-int8",
+  "revision": "34160516e72121848b4622fdb727b7f33c00101b",
   "local_dir": "models/onnx/xlm-roberta-base-aug",
   "onnx_file": "model.int8.onnx",
   "files": {
