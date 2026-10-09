@@ -1,0 +1,5 @@
+# Serving the int8 ONNX encoder (SCAMSHIELD_MODEL=xlmr-aug-int8). No torch needed.
+# The model files are fetched by `python -m scripts.download_model`, or on first start.
+-r requirements.txt
+onnxruntime==1.31.0
+transformers==5.19.0

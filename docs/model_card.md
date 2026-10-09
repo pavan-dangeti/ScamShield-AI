@@ -2,7 +2,8 @@
 
 **Model:** `xlmr-base-aug`, XLM-R base fine-tuned with a binary head and a
 six-way tactic head, trained with adversarial augmentation, exported to ONNX and
-dynamically quantised to int8. **Version:** 1.0 · **Date:** 2026-09-30
+dynamically quantised to int8. **Version:** 1.0 · **Date:** 2026-09-30 ·
+**Published:** [pavan-dangeti/scamshield-xlmr-int8](https://huggingface.co/pavan-dangeti/scamshield-xlmr-int8) (CC BY-NC 4.0)
 
 ## Intended use
 

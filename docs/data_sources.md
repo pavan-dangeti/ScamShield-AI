@@ -98,6 +98,11 @@ placeholder artefacts, and - for messages generated as legitimate - no
 credential request, because a small model will otherwise "helpfully" write a
 scam and label it safe.
 
+Licence: Qwen2.5-3B-Instruct is under the Qwen Research License Agreement, which
+permits non-commercial use and requires models trained on its outputs to display
+"Built with Qwen" in their documentation. The README and the published model card
+do so, and the published model is licensed for non-commercial use for this reason.
+
 ---
 
 ## Considered and rejected
