@@ -241,6 +241,10 @@ quality is measured by a blind re-check and by agreement with the original UCI
 annotation. No public real corpus exists for Hindi, Tamil, Telugu or Bengali, so those
 test cells depend on contributed messages. Details: [`docs/data_card.md`](docs/data_card.md).
 
+**Built with Qwen.** 85 training rows were generated with Qwen2.5-3B-Instruct, which is
+licensed under the Qwen Research License Agreement. Both the baseline and the published
+encoder are trained on them.
+
 ## Getting started
 
 ```bash
@@ -261,10 +265,28 @@ vulture src scripts tests --min-confidence 80
 mypy --explicit-package-bases --namespace-packages src scripts tests
 ```
 
-Neural models need `requirements-ml.txt`; training commands are in
-[`docs/model_comparison.md`](docs/model_comparison.md), with a free-GPU Colab notebook in
-[`notebooks/`](notebooks/train_encoder_colab.ipynb). The int8 artefact is produced by
-`python -m scripts.export_model --model xlmr-base-aug --quantize`. WhatsApp setup:
+### Serving the fine-tuned model
+
+The int8 XLM-R model is published on Hugging Face Hub; `configs/model_hub.json` pins the
+repository, the exact revision and a SHA-256 checksum for every file.
+
+```bash
+pip install -r requirements-onnx.txt     # onnxruntime + tokenizer, no torch
+python -m scripts.download_model         # 295 MB, every file verified
+SCAMSHIELD_MODEL=xlmr-aug-int8 python -m src.main
+```
+
+If the files are missing when the server starts, it downloads and verifies them itself.
+A mismatched or truncated file is rejected, and without `requirements-onnx.txt`
+installed the server logs a warning and serves the baseline. Expect about 1.1 GB of memory.
+
+To regenerate the model instead, run the "Reproduce the published int8 model" cells of
+the [Colab notebook](notebooks/train_encoder_colab.ipynb) on a free T4 (or the same
+commands locally with `requirements-ml.txt`), unzip the four files into `models/onnx/`,
+and publish with `python -m scripts.publish_model --new-artefact`.
+
+Other neural models need `requirements-ml.txt`; training commands are in
+[`docs/model_comparison.md`](docs/model_comparison.md). WhatsApp setup:
 [`docs/twilio_setup.md`](docs/twilio_setup.md). Adding a language:
 [`docs/adding_a_language.md`](docs/adding_a_language.md). The demo above is recorded by
 `python -m scripts.record_demo`.
